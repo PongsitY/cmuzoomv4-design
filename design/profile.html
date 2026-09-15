@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Profile · CMU ZOOM</title>
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/profile.js" defer></script>
+</head>
+<body data-demo-switcher>
+  <!-- ===== Navbar (shared with manage-users.html) ===== -->
+  <header class="navbar">
+    <div class="navbar-inner">
+      <a class="brand" href="profile.html" data-i18n-aria-label="nav.home">
+        <img src="../images/logo-tlic.png" alt="TLIC" width="200" height="85">
+      </a>
+
+      <nav class="nav-links" data-i18n-aria-label="nav.primary">
+        <a class="nav-link" href="manage-users.html" data-admin-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
+          <span data-i18n="menu.manageUsers">Manage Users</span>
+        </a>
+        <button type="button" class="nav-link" data-modal-open="terms-modal">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
+          <span data-i18n="nav.terms">Zoom Pro Terms of Use</span>
+        </button>
+        <a class="nav-link" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
+          <span data-i18n="nav.guide">User Guide</span>
+        </a>
+      </nav>
+
+      <div class="dropdown" data-dropdown>
+        <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
+          <span class="avatar avatar-sm" aria-hidden="true">AS</span>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+        </button>
+
+        <div class="menu" id="user-menu" data-dropdown-menu hidden>
+          <div class="menu-header">
+            <span class="avatar avatar-md" aria-hidden="true">AS</span>
+            <div>
+              <strong>Anong Srisuk</strong>
+              <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
+            </div>
+          </div>
+
+          <div class="menu-section menu-mobile-only">
+            <a class="menu-item" href="manage-users.html" data-admin-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span data-i18n="menu.manageUsers">Manage Users</span>
+            </a>
+            <button type="button" class="menu-item" data-modal-open="terms-modal">
+              <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+              <span data-i18n="nav.terms">Zoom Pro Terms of Use</span>
+            </button>
+            <a class="menu-item" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
+              <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
+              <span data-i18n="nav.guide">User Guide</span>
+            </a>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-row">
+              <svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg>
+              <span data-i18n="menu.language">Language</span>
+              <div class="segmented" role="group" data-i18n-aria-label="menu.language">
+                <button type="button" data-set-lang="en">EN</button>
+                <button type="button" data-set-lang="th">TH</button>
+              </div>
+            </div>
+            <div class="menu-row">
+              <svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>
+              <span data-i18n="menu.theme">Theme</span>
+              <div class="segmented" role="group" data-i18n-aria-label="menu.theme">
+                <button type="button" data-set-theme="light" data-i18n-aria-label="menu.themeLight"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-sun"></use></svg></button>
+                <button type="button" data-set-theme="dark" data-i18n-aria-label="menu.themeDark"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-moon"></use></svg></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <a class="menu-item menu-item-danger" href="index.html">
+              <svg class="icon" aria-hidden="true"><use href="#i-log-out"></use></svg>
+              <span data-i18n="menu.logout">Logout</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== 1. User Profile ===== -->
+  <main class="page">
+    <div class="profile-grid">
+      <section class="card profile-card" aria-labelledby="profile-name">
+        <span class="avatar avatar-xl" aria-hidden="true">AS</span>
+        <h1 class="profile-name" id="profile-name">Anong Srisuk</h1>
+        <p class="profile-email">anong.s@cmu.ac.th</p>
+        <p class="profile-org">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-building"></use></svg>
+          <span data-i18n="profile.mockOrg">Faculty of Engineering</span>
+        </p>
+
+        <div class="license-box">
+          <p class="license-caption" data-i18n="profile.license">Your Zoom license</p>
+          <p class="license-name" data-license-name>Pro User</p>
+          <div class="license-badges" data-license-badges></div>
+          <p class="license-expiry" data-license-expiry hidden></p>
+        </div>
+
+        <button type="button" class="btn btn-outline-danger btn-block profile-license-action" data-modal-open="return-modal" data-return-button>
+          <svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg>
+          <span data-i18n="profile.return">Return license</span>
+        </button>
+
+        <!-- Basic users only: get Pro from the organization's quota (disabled when the quota is full). -->
+        <button type="button" class="btn btn-primary btn-block profile-license-action" data-modal-open="request-modal" data-request-button aria-describedby="request-hint" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
+          <span data-i18n="profile.request">Request Pro</span>
+        </button>
+        <p class="request-hint" id="request-hint" data-request-hint hidden data-i18n="profile.requestUnavailable"></p>
+
+        <div class="recording-setting">
+          <span class="switch">
+            <input type="checkbox" id="recording-toggle" checked data-recording-toggle>
+            <span class="switch-track"></span>
+          </span>
+          <label for="recording-toggle">
+            <span data-i18n="profile.recording">Save Cloud Recording to your OneDrive</span>
+            <span class="badge badge-beta" data-i18n="profile.beta">Beta</span>
+          </label>
+          <span class="tooltip">
+            <button type="button" class="tooltip-trigger" aria-describedby="recording-help" data-i18n-aria-label="profile.recordingHelpLabel">
+              <svg class="icon" aria-hidden="true"><use href="#i-help"></use></svg>
+            </button>
+            <span class="tooltip-content" role="tooltip" id="recording-help" data-i18n="profile.recordingHelp"></span>
+          </span>
+        </div>
+      </section>
+
+      <section class="card meeting-card" data-i18n-aria-label="meeting.section">
+        <div class="meeting-logos">
+          <img class="logo-cmu" src="../images/logo-cmu.png" alt="Chiang Mai University" width="100" height="100">
+          <img class="logo-zoom" src="../images/logo-zoom.png" alt="Zoom" width="150" height="34">
+        </div>
+
+        <div class="meeting-actions">
+          <a class="btn btn-zoom" href="https://zoom.us/join" target="_blank" rel="noopener">
+            <span class="btn-icon-circle"><svg class="icon" aria-hidden="true"><use href="#i-log-in"></use></svg></span>
+            <span data-i18n="meeting.join">Join a Meeting</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-external"></use></svg>
+          </a>
+          <a class="btn btn-zoom" href="https://zoom.us/start/webmeeting" target="_blank" rel="noopener">
+            <span class="btn-icon-circle"><svg class="icon" aria-hidden="true"><use href="#i-video"></use></svg></span>
+            <span data-i18n="meeting.start">Start a Meeting</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-external"></use></svg>
+          </a>
+          <a class="btn btn-outline-zoom" href="https://zoom.us/meeting/schedule" target="_blank" rel="noopener">
+            <span class="btn-icon-circle"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></span>
+            <span data-i18n="meeting.schedule">Schedule a Meeting</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-external"></use></svg>
+          </a>
+        </div>
+        <p class="meeting-hint" data-i18n="profile.meetingsHint">Meetings open in the Zoom app or your browser.</p>
+      </section>
+    </div>
+  </main>
+
+  <!-- ===== Modals ===== -->
+  <dialog class="modal" id="terms-modal" aria-labelledby="terms-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg></span>
+        <h2 id="terms-title" data-i18n="terms.title">Zoom Pro Terms of Use</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Content from "เงื่อนไขการใช้ ZOOM Pro.txt"; text lives in i18n.js (terms.*). -->
+        <ol class="terms-list">
+          <li data-i18n="terms.1"></li>
+          <li data-i18n="terms.2"></li>
+        </ol>
+        <div class="terms-notes">
+          <p class="terms-notes-title" data-i18n="terms.notesTitle">Notes</p>
+          <ul>
+            <li>
+              <span data-i18n="terms.note1"></span>
+              <a href="https://line.me/R/ti/p/@tliccmu" target="_blank" rel="noopener">@tliccmu</a>
+            </li>
+            <li data-i18n="terms.note2"></li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-modal-close data-i18n="terms.accept">I understand</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="return-modal" aria-labelledby="return-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg></span>
+        <h2 id="return-title" data-i18n="return.title">Return your license?</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n="return.body"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" data-confirm-return data-i18n="return.confirm">Return license</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="request-modal" aria-labelledby="request-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg></span>
+        <h2 id="request-title" data-i18n="request.title">Request a Pro license?</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n="request.body"></p>
+        <p class="modal-note">
+          <span data-i18n="request.termsPrefix">By sending a request, you agree to the</span>
+          <button type="button" class="link-button" data-modal-open="terms-modal" data-i18n="nav.terms">Zoom Pro Terms of Use</button>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-confirm-request data-i18n="request.confirm">Get Pro</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Demo only: moved next to the Demo view switcher by profile.js to preview both Request Pro states. -->
+  <div class="demo-switcher" data-quota-demo hidden>
+    <span class="demo-label" data-i18n="demo.orgQuota">Org Pro quota</span>
+    <div class="segmented" role="group" data-i18n-aria-label="demo.orgQuota">
+      <button type="button" data-set-quota="available" data-i18n="demo.quotaAvailable">Available</button>
+      <button type="button" data-set-quota="full" data-i18n="demo.quotaFull">Full</button>
+    </div>
+  </div>
+</body>
+</html>

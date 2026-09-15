@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CMU ZOOM</title>
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/app.js"></script>
+</head>
+<body>
+  <main class="landing">
+    <div class="landing-media">
+      <picture>
+        <source media="(max-width: 767px)" srcset="../images/bg-full.png">
+        <source media="(max-width: 1199px) and (orientation: portrait)" srcset="../images/bg-crop-5-4.png">
+        <img src="../images/bg-4-3.png" alt="" width="1200" height="896">
+      </picture>
+    </div>
+
+    <section class="landing-panel">
+      <div class="landing-toolbar">
+        <div class="segmented" role="group" data-i18n-aria-label="menu.language">
+          <button type="button" data-set-lang="en">EN</button>
+          <button type="button" data-set-lang="th">TH</button>
+        </div>
+        <button type="button" class="icon-button" data-toggle-theme data-i18n-aria-label="menu.theme">
+          <svg class="icon theme-icon-light" aria-hidden="true"><use href="#i-moon"></use></svg>
+          <svg class="icon theme-icon-dark" aria-hidden="true"><use href="#i-sun"></use></svg>
+        </button>
+      </div>
+
+      <div class="landing-content">
+        <div class="logo-row">
+          <img class="logo-cmu" src="../images/logo-cmu.png" alt="Chiang Mai University" width="100" height="100">
+          <span class="logo-divider" aria-hidden="true"></span>
+          <span class="logo-chip"><img class="logo-tlic" src="../images/logo-tlic.png" alt="Teaching and Learning Innovation Center" width="200" height="85"></span>
+          <span class="logo-divider" aria-hidden="true"></span>
+          <img class="logo-zoom" src="../images/logo-zoom.png" alt="Zoom" width="150" height="34">
+        </div>
+
+        <p class="landing-welcome" data-i18n="landing.welcome">Welcome to</p>
+        <h1 class="landing-title">CMU ZOOM</h1>
+        <p class="landing-subtitle" data-i18n="landing.subtitle">Video conferencing for Chiang Mai University students and staff.</p>
+
+        <a class="btn btn-primary btn-lg btn-block" href="profile.html">
+          <svg class="icon" aria-hidden="true"><use href="#i-log-in"></use></svg>
+          <span data-i18n="landing.login">Login with CMU Account</span>
+        </a>
+        <p class="landing-note" data-i18n="landing.note">Sign in with your @cmu.ac.th account.</p>
+      </div>
+
+      <p class="landing-footer" data-i18n="landing.footer">Teaching and Learning Innovation Center, Chiang Mai University</p>
+    </section>
+  </main>
+</body>
+</html>
