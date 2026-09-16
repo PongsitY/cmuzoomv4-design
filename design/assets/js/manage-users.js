@@ -23,6 +23,12 @@
   const CMU_ORG_ID = 'cmu';
   const ACTIONS = Object.freeze({ ASSIGN: 'assign', REVOKE: 'revoke' });
   const LICENSE_MODAL_ID = 'license-modal';
+  const EXPIRY_MODAL_ID = 'expiry-modal';
+  // Pro is returned to the org quota after this many days without use (per organization).
+  // 0 = never expires.
+  const EXPIRY_NEVER = 0;
+  const EXPIRY_PRESET_DAYS = Object.freeze([30, 60, 90, 180, EXPIRY_NEVER]);
+  const DEFAULT_EXPIRY_DAYS = 60;
   // The signed-in demo user (shown on profile.html) is an admin of the Faculty of Engineering.
   const SIGNED_IN_USER = Object.freeze({ name: 'Anong Srisuk', email: 'anong.s@cmu.ac.th', orgId: 'eng' });
   const ADMIN_ORG_ID = SIGNED_IN_USER.orgId;
@@ -58,9 +64,9 @@
   const ORGANIZATIONS = [
     { id: CMU_ORG_ID, seed: 4, name: { en: 'CMU', th: 'CMU' }, quotas: { pro: 12, tempPro: 3, largeMeeting: 2 } },
     { id: 'ou', seed: 0, name: { en: 'Office of the University', th: 'สำนักงานมหาวิทยาลัย' }, quotas: { pro: 10 } },
-    { id: 'med', seed: 1, name: { en: 'Faculty of Medicine', th: 'คณะแพทยศาสตร์' }, quotas: { pro: 20 } },
+    { id: 'med', seed: 1, name: { en: 'Faculty of Medicine', th: 'คณะแพทยศาสตร์' }, quotas: { pro: 20 }, expiryDays: 90 },
     { id: 'eng', seed: 2, name: { en: 'Faculty of Engineering', th: 'คณะวิศวกรรมศาสตร์' }, quotas: { pro: 8 } },
-    { id: 'hum', seed: 3, name: { en: 'Faculty of Humanities', th: 'คณะมนุษยศาสตร์' }, quotas: { pro: 6 } }
+    { id: 'hum', seed: 3, name: { en: 'Faculty of Humanities', th: 'คณะมนุษยศาสตร์' }, quotas: { pro: 6 }, expiryDays: 30 }
   ];
   const CMU_ORG = ORGANIZATIONS.find((org) => org.id === CMU_ORG_ID);
 
@@ -152,6 +158,7 @@
   }
 
   const usersByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, buildUsers(org)]));
+  const expiryDaysByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, org.expiryDays ?? DEFAULT_EXPIRY_DAYS]));
 
   /* ---------- state & helpers ---------- */
 
@@ -348,7 +355,58 @@
     const org = currentOrg();
     renderOrgHeading(org);
     renderQuotas(org);
+    renderExpiry(org);
     renderTable(org);
+  }
+
+  /* ---------- Pro expiration interval ---------- */
+
+  function expiryLabel(days) {
+    return days === EXPIRY_NEVER ? t('expiry.never') : t('expiry.days', { count: days });
+  }
+
+  function renderExpiry(org) {
+    const count = expiryDaysByOrg.get(org.id);
+    els.expiryValue.textContent = expiryLabel(count);
+    els.expiryDesc.textContent = count === EXPIRY_NEVER ? t('expiry.descNever') : t('expiry.desc', { count });
+  }
+
+  /** Radio tiles for the presets, with `selectedDays` checked. */
+  function renderExpiryOptions(org, selectedDays) {
+    els.expiryOrg.textContent = orgName(org);
+    els.expiryOptions.innerHTML = EXPIRY_PRESET_DAYS.map((days) => `
+      <label class="expiry-option${days === EXPIRY_NEVER ? ' is-never' : ''}">
+        <input type="radio" name="expiry-days" value="${days}"${days === selectedDays ? ' checked' : ''}>
+        <span>${escapeHtml(expiryLabel(days))}</span>
+      </label>`).join('');
+  }
+
+  function checkedExpiryDays() {
+    const checked = els.expiryOptions.querySelector('input[name="expiry-days"]:checked');
+    return checked ? Number(checked.value) : null;
+  }
+
+  function openExpiryModal() {
+    renderExpiryOptions(currentOrg(), expiryDaysByOrg.get(currentOrg().id));
+    openModal(EXPIRY_MODAL_ID);
+    const checked = els.expiryOptions.querySelector('input:checked');
+    if (checked) {
+      checked.focus();
+    }
+  }
+
+  function saveExpiry() {
+    const org = currentOrg();
+    const days = checkedExpiryDays();
+    if (!EXPIRY_PRESET_DAYS.includes(days)) {
+      console.error('[manage-users] Invalid Pro expiration interval', days);
+      showToast(t('expiry.invalid'), 'error');
+      return;
+    }
+    expiryDaysByOrg.set(org.id, days);
+    closeModal(els.expiryModal);
+    renderExpiry(org);
+    showToast(t('expiry.saved', { org: orgName(org), interval: expiryLabel(days) }), 'success');
   }
 
   /* ---------- rendering: license modal ---------- */
@@ -560,12 +618,24 @@
       render();
     });
 
+    els.expiryEdit.addEventListener('click', openExpiryModal);
+    els.expirySave.addEventListener('click', saveExpiry);
+
+    els.expiryModal.addEventListener('close', () => {
+      els.expiryEdit.focus();
+    });
+
     document.addEventListener(EVENTS.LANG, () => {
       render();
       renderLicenseModal();
+      if (els.expiryModal.open) {
+        // Keep the unsaved selection while relabelling.
+        renderExpiryOptions(currentOrg(), checkedExpiryDays());
+      }
     });
     document.addEventListener(EVENTS.ROLE, () => {
       closeModal(els.modal);
+      closeModal(els.expiryModal);
       render();
     });
   }
@@ -589,7 +659,14 @@
       modalCurrent: '[data-lm-current]',
       modalActions: '[data-lm-actions]',
       modalUsage: '[data-lm-usage]',
-      modalUsageCount: '[data-lm-usage-count]'
+      modalUsageCount: '[data-lm-usage-count]',
+      expiryValue: '[data-expiry-value]',
+      expiryDesc: '[data-expiry-desc]',
+      expiryEdit: '[data-expiry-edit]',
+      expiryModal: `#${EXPIRY_MODAL_ID}`,
+      expiryOrg: '[data-expiry-org]',
+      expiryOptions: '[data-expiry-options]',
+      expirySave: '[data-expiry-save]'
     };
     try {
       Object.entries(selectors).forEach(([key, selector]) => {

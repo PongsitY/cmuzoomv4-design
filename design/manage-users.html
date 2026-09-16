@@ -117,10 +117,27 @@
     </section>
 
     <div class="manage-grid" data-manage hidden>
-      <aside class="card quota-card" aria-labelledby="quota-title">
-        <h2 class="card-title" id="quota-title" data-quota-title>Pro Quotas</h2>
-        <div class="quota-list" data-quota-list></div>
-      </aside>
+      <div class="manage-side">
+        <aside class="card quota-card" aria-labelledby="quota-title">
+          <h2 class="card-title" id="quota-title" data-quota-title>Pro Quotas</h2>
+          <div class="quota-list" data-quota-list></div>
+        </aside>
+
+        <section class="card expiry-card" aria-labelledby="expiry-title">
+          <h2 class="card-title" id="expiry-title" data-i18n="expiry.title">Pro Expiration Interval</h2>
+          <div class="expiry-row">
+            <p class="expiry-value">
+              <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+              <span data-expiry-value></span>
+            </p>
+            <button type="button" class="btn btn-sm btn-ghost expiry-edit" data-expiry-edit aria-haspopup="dialog" data-i18n-aria-label="expiry.editLabel">
+              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-pencil"></use></svg>
+              <span data-i18n="expiry.edit">Edit</span>
+            </button>
+          </div>
+          <p class="expiry-desc" data-expiry-desc></p>
+        </section>
+      </div>
 
       <section class="card users-card" aria-labelledby="org-name">
         <div class="users-header">
@@ -142,7 +159,7 @@
             <thead>
               <tr>
                 <th scope="col" data-i18n="table.name">Name</th>
-                <th scope="col" class="col-last-use" data-i18n="table.lastUse">Last Use</th>
+                <th scope="col" class="col-last-use" data-i18n="table.lastUse">Last Hosted</th>
                 <th scope="col" class="col-license" data-i18n="table.license">License</th>
               </tr>
             </thead>
@@ -186,6 +203,33 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-modal-close data-i18n="terms.accept">I understand</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Pro expiration interval modal: options filled by manage-users.js for the current organization. -->
+  <dialog class="modal" id="expiry-modal" aria-labelledby="expiry-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg></span>
+        <div class="modal-title-group">
+          <h2 id="expiry-modal-title" data-i18n="expiry.modalTitle">Edit Pro expiration interval</h2>
+          <p class="modal-subtitle" data-expiry-org></p>
+        </div>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <fieldset class="expiry-fieldset">
+          <legend class="modal-section-title" data-i18n="expiry.legend">Expire Pro after no use for</legend>
+          <div class="expiry-options" data-expiry-options></div>
+        </fieldset>
+        <p class="modal-note" data-i18n="expiry.modalNote"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-expiry-save data-i18n="expiry.save">Save</button>
       </div>
     </div>
   </dialog>

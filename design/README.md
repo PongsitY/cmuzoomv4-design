@@ -20,7 +20,7 @@ Opening `design/index.html` directly from disk also works.
 | --- | --- | --- |
 | `index.html` | 0. Landing Page | Photo + CMU/TLIC/Zoom logos. Signed out: "Login with CMU Account". Signed in: "Manage Your License" + "Go to ZOOM Booking Center" |
 | `profile.html` | 1. User Profile | Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card, meeting buttons |
-| `manage-users.html` | 2. Manage Users | Quota bars, org name/selector, search, license dropdown + Large Meeting toggle |
+| `manage-users.html` | 2. Manage Users | Quota bars, Pro expiration interval, org name/selector, search, license dropdown + Large Meeting toggle |
 | `booking.html` | — (new) | Book Temp. Pro / Large Meeting for one day (of six months ahead) in one or more time slots; "My bookings" list with Cancel |
 
 ## Behaviour
@@ -56,6 +56,10 @@ Opening `design/index.html` directly from disk also works.
 - **Quota panel:** Admin sees only the organization's Pro quota. Global Admin sees the selected
   organization's Pro quota plus "Shared Pool" (Temp. Pro and Large Meeting, usage across all
   organizations).
+- **Pro Expiration Interval panel** (under the quota card): how many days a Pro license may go unused
+  before it is returned to the organization's Pro quota. Set per organization — Admin edits their own
+  organization, Global Admin edits the selected one. **Edit** opens a modal with presets 30 / 60 / 90 /
+  180 days or Never. Mock defaults: 60 days (Medicine 90, Humanities 30).
 - **License bubble → modal:** each row shows the license as a clickable bubble (Large Meeting as a
   second-line bubble). Clicking opens a modal with the user's meeting log for the last 30 days
   (date & time, duration, participants) and one row per license type with an Assign/Revoke button.
