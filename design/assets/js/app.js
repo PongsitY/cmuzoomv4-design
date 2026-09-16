@@ -10,9 +10,11 @@
   const STORAGE_KEYS = Object.freeze({
     theme: 'cmuzoom.theme',
     lang: 'cmuzoom.lang',
-    role: 'cmuzoom.role'
+    role: 'cmuzoom.role',
+    auth: 'cmuzoom.auth'
   });
 
+  const AUTH = Object.freeze({ IN: 'in', OUT: 'out' });
   const THEMES = Object.freeze({ LIGHT: 'light', DARK: 'dark' });
   const ROLES = Object.freeze({ USER: 'user', ADMIN: 'admin', GLOBAL: 'global' });
   const LICENSES = Object.freeze({ BASIC: 'basic', PRO: 'pro', TEMP_PRO: 'tempPro' });
@@ -27,6 +29,7 @@
   const ICONS = {
     'chevron-down': '<path d="m6 9 6 6 6-6"/>',
     'chevron-right': '<path d="m9 18 6-6-6-6"/>',
+    'chevron-left': '<path d="m15 18-6-6 6-6"/>',
     globe: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
     moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
@@ -45,7 +48,10 @@
     undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     send: '<path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/>',
     lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
-    'arrow-left': '<path d="m12 19-7-7 7-7M19 12H5"/>'
+    'arrow-left': '<path d="m12 19-7-7 7-7M19 12H5"/>',
+    'id-card': '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="8" cy="12" r="2"/><path d="M14 10h6M14 14h4"/>',
+    'calendar-check': '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>'
   };
 
   /* ---------- storage ---------- */
@@ -81,12 +87,14 @@
   const state = {
     theme: pick(readStorage(STORAGE_KEYS.theme), Object.values(THEMES), systemTheme()),
     lang: pick(readStorage(STORAGE_KEYS.lang), window.I18N.LANGS, window.I18N.FALLBACK_LANG),
-    role: pick(readStorage(STORAGE_KEYS.role), Object.values(ROLES), DEFAULT_ROLE)
+    role: pick(readStorage(STORAGE_KEYS.role), Object.values(ROLES), DEFAULT_ROLE),
+    auth: pick(readStorage(STORAGE_KEYS.auth), Object.values(AUTH), AUTH.OUT)
   };
 
   window.I18N.setLang(state.lang);
   root.dataset.theme = state.theme;
   root.dataset.role = state.role;
+  root.dataset.auth = state.auth;
   root.lang = state.lang;
 
   /* ---------- setters ---------- */
@@ -120,6 +128,13 @@
     writeStorage(STORAGE_KEYS.role, state.role);
     syncPressed('data-set-role', state.role);
     document.dispatchEvent(new CustomEvent(EVENTS.ROLE, { detail: { role: state.role } }));
+  }
+
+  /** @param {boolean} signedIn */
+  function setSignedIn(signedIn) {
+    state.auth = signedIn ? AUTH.IN : AUTH.OUT;
+    root.dataset.auth = state.auth;
+    writeStorage(STORAGE_KEYS.auth, state.auth);
   }
 
   /* ---------- formatting ---------- */
@@ -340,6 +355,17 @@
       const roleButton = event.target.closest('[data-set-role]');
       if (roleButton) {
         setRole(roleButton.dataset.setRole);
+        return;
+      }
+      const loginButton = event.target.closest('[data-login]');
+      if (loginButton) {
+        event.preventDefault();
+        setSignedIn(true);
+        return;
+      }
+      const logoutButton = event.target.closest('[data-logout]');
+      if (logoutButton) {
+        setSignedIn(false);
       }
     });
   }
@@ -368,6 +394,8 @@
     t: (key, vars) => window.I18N.t(key, vars),
     getRole: () => state.role,
     getLang: () => state.lang,
+    isSignedIn: () => state.auth === AUTH.IN,
+    setSignedIn,
     formatDate,
     formatDateTime,
     mountDemoControl,

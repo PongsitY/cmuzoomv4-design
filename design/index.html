@@ -47,11 +47,28 @@
         <h1 class="landing-title">CMU ZOOM</h1>
         <p class="landing-subtitle" data-i18n="landing.subtitle">Video conferencing for Chiang Mai University students and staff.</p>
 
-        <a class="btn btn-primary btn-lg btn-block" href="profile.html">
-          <svg class="icon" aria-hidden="true"><use href="#i-log-in"></use></svg>
-          <span data-i18n="landing.login">Login with CMU Account</span>
-        </a>
-        <p class="landing-note" data-i18n="landing.note">Sign in with your @cmu.ac.th account.</p>
+        <div class="landing-actions" data-auth-show="out">
+          <a class="btn btn-primary btn-lg btn-block" href="#" data-login>
+            <svg class="icon" aria-hidden="true"><use href="#i-log-in"></use></svg>
+            <span data-i18n="landing.login">Login with CMU Account</span>
+          </a>
+          <p class="landing-note" data-i18n="landing.note">Sign in with your @cmu.ac.th account.</p>
+        </div>
+
+        <div class="landing-actions" data-auth-show="in">
+          <a class="btn btn-primary btn-lg btn-block" href="profile.html">
+            <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+            <span data-i18n="landing.manageLicense">Manage Your License</span>
+          </a>
+          <a class="btn btn-outline-primary btn-lg btn-block" href="booking.html">
+            <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+            <span data-i18n="landing.bookingCenter">Go to ZOOM Booking Center</span>
+          </a>
+          <p class="landing-note">
+            <span data-i18n="landing.signedInAs">Signed in as</span> anong.s@cmu.ac.th
+            · <a href="index.html" data-logout data-i18n="landing.logout">Logout</a>
+          </p>
+        </div>
       </div>
 
       <p class="landing-footer" data-i18n="landing.footer">Teaching and Learning Innovation Center, Chiang Mai University</p>
