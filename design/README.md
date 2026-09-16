@@ -18,14 +18,19 @@ Opening `design/index.html` directly from disk also works.
 
 | File | Sketch screen | Notes |
 | --- | --- | --- |
-| `index.html` | 0. Landing Page | Photo + CMU/TLIC/Zoom logos, "Login with CMU Account" → profile |
-| `profile.html` | 1. User Profile | Navbar (Zoom Pro terms modal, user guide link, account menu), license card, meeting buttons |
+| `index.html` | 0. Landing Page | Photo + CMU/TLIC/Zoom logos. Signed out: "Login with CMU Account". Signed in: "Manage Your License" + "Go to ZOOM Booking Center" |
+| `profile.html` | 1. User Profile | Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card, meeting buttons |
 | `manage-users.html` | 2. Manage Users | Quota bars, org name/selector, search, license dropdown + Large Meeting toggle |
+| `booking.html` | — (new) | Book Temp. Pro / Large Meeting for one day (of six months ahead) in one or more time slots; "My bookings" list with Cancel |
 
 ## Behaviour
 
-- **Navbar links:** Manage Users (admins only, highlighted on its own page), Zoom Pro Terms of Use, User Guide.
-  Below 860px they collapse into the top of the account menu.
+- **Login state:** the landing page's "Login with CMU Account" button signs the mock user in and returns
+  to the landing page (`data-login`), showing "Manage Your License" (→ profile) and "Go to ZOOM Booking
+  Center" (→ booking) instead. Logout (in the account menu, `data-logout`) signs out and returns to the
+  landing page. Persists in `localStorage` (`cmuzoom.auth`).
+- **Navbar links:** Manage Users (admins only, highlighted on its own page), Booking Center, Zoom Pro
+  Terms of Use, User Guide. Below 860px they collapse into the top of the account menu.
 - **Account menu:** user name + Edit Profile, language (EN/TH), theme (light/dark), Logout.
 - **Profile license card:** Pro / Temp. Pro users see **Return license** (confirm modal). Basic users see
   **Request Pro**:
@@ -59,6 +64,23 @@ Opening `design/index.html` directly from disk also works.
 - **License rules (mock):** Basic / Pro / Temp. Pro are exclusive (assigning one replaces the other);
   Large Meeting requires Pro or Temp. Pro and is removed when that license is revoked. Assign buttons
   are disabled when the quota is used up.
+- **ZOOM Booking Center** (`booking.html`): book Temp. Pro or Large Meeting for one day, in one or
+  more time slots. A booking is always a single day; only one day can be picked at a time, but
+  multiple time slots on it can be. Anyone can book either license; saving assigns it right away
+  (no admin approval).
+  - Step 1 picks a license; step 2 picks **one** day on a calendar covering tomorrow through the end
+    of the 6th month from today (past/today and out-of-window days are disabled); step 3 picks one or
+    more of three fixed 5.5-hour time slots (5:30 AM, 11:00 AM, 4:30 PM); step 4 adds an optional note
+    (200 chars). Picking a different day, or switching license, clears the current pick (time slots
+    are per-day and availability differs per license).
+  - Daily capacity mirrors the Shared Pool quotas CMU holds for everyone (Temp. Pro 3/day, Large
+    Meeting 2/day, see `manage-users.js`) — one booking uses one day of that quota no matter how many
+    time slots it covers. No counts are shown; a full day is simply disabled, and once a day is picked,
+    any of its three time slots that are full (mocked independently per slot) are disabled the same
+    way. A day the user already booked for the selected license is highlighted (not just dimmed like
+    a disabled day), so it stands out on the calendar; the picked day itself is highlighted solid.
+  - "My bookings" lists upcoming bookings (day + time slots) with a Cancel button (confirm modal)
+    that frees the day.
 - Theme, language and demo role persist in `localStorage` (`cmuzoom.*`). User/license data is in-memory and resets on reload.
 
 ## Background
@@ -85,6 +107,7 @@ assets/js/i18n.js          EN/TH dictionary; markup uses data-i18n*, attributes
 assets/js/app.js           theme, language, role, dropdown, dialogs, toasts, icon sprite
 assets/js/profile.js       profile license card, return license, OneDrive toggle
 assets/js/manage-users.js  mock orgs/users, quotas, search, license editing
+assets/js/booking.js       booking calendar, Shared Pool daily capacity, my bookings, cancel
 ```
 
 ## Content sources
