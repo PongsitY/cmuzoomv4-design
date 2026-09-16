@@ -1354,10 +1354,109 @@ button {
   align-items: start;
 }
 
-.quota-card {
+.manage-side {
   position: sticky;
   top: calc(var(--navbar-height) + 24px);
+  display: grid;
+  gap: 16px;
+}
+
+.quota-card {
   padding: 22px;
+}
+
+/* ---------- Pro expiration interval ---------- */
+.expiry-card {
+  padding: 22px;
+}
+
+.expiry-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 6px;
+}
+
+.expiry-edit.btn-sm {
+  min-height: 32px;
+  padding: 4px 10px;
+  gap: 6px;
+}
+
+.expiry-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.expiry-value .icon {
+  color: var(--primary);
+}
+
+.expiry-desc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.expiry-fieldset {
+  margin: 4px 0 12px;
+  padding: 0;
+  border: 0;
+}
+
+.expiry-fieldset legend {
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.expiry-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.expiry-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-inset);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.expiry-option.is-never {
+  grid-column: 1 / -1;
+}
+
+.expiry-option:hover {
+  border-color: var(--border-strong);
+}
+
+.expiry-option:has(input:checked) {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary-soft) 70%, transparent);
+  font-weight: 500;
+}
+
+.expiry-option:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+.expiry-option input {
+  margin: 0;
+  accent-color: var(--primary);
 }
 
 .quota-list {
@@ -1819,7 +1918,7 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .quota-card {
+  .manage-side {
     position: static;
   }
 
