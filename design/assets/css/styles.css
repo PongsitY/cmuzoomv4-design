@@ -7,6 +7,25 @@
   /* Kanit is loaded from Google Fonts in each page <head> (400/500/600/700 + italic 400). */
   --font-sans: "Kanit", "Segoe UI", "Leelawadee UI", Tahoma, system-ui, sans-serif;
 
+  /* Type scale (15px base). Kanit runs heavy, so: 700 display, 600 titles, 500 controls/labels, 400 body. */
+  --fs-2xs: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 15px;
+  --fs-md: 16px;
+  --fs-lg: 18px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+  --fs-3xl: 30px;
+  --fs-display: clamp(40px, 5vw, 56px);
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.2;
+  --lh-heading: 1.35;
+  --lh-body: 1.55;
+
   --bg: #f5f3f9;
   /* Page background: CMU purple glow top-left, Zoom blue glow bottom-right, plus faint TLIC pink/teal
      accents so the glass panels have colour to blur, over a soft lavender base. */
@@ -132,8 +151,9 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-body);
   color: var(--text);
   background-color: var(--bg);
   background-image: var(--bg-gradient);
@@ -209,9 +229,10 @@ button {
   padding: 10px 20px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 15px;
-  line-height: 1.2;
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-base);
+  line-height: var(--lh-tight);
+  text-align: center;
   text-decoration: none;
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
@@ -226,7 +247,7 @@ button {
 
 .btn-lg {
   min-height: 52px;
-  font-size: 16px;
+  font-size: var(--fs-md);
 }
 
 .btn-primary {
@@ -346,8 +367,8 @@ button {
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   white-space: nowrap;
 }
 
@@ -417,8 +438,8 @@ button {
   border-radius: 999px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -441,7 +462,8 @@ button {
   border-radius: 50%;
   background: linear-gradient(135deg, #8a5cc4, #5a3389);
   color: #ffffff;
-  font-weight: 600;
+  font-weight: var(--fw-medium);
+  line-height: 1;
   letter-spacing: 0.02em;
   user-select: none;
 }
@@ -521,13 +543,14 @@ button {
 
 .menu-header strong {
   display: block;
-  font-size: 15px;
-  line-height: 1.3;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .menu-header a {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   color: var(--zoom-text);
   text-decoration: none;
 }
@@ -553,7 +576,7 @@ button {
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   text-align: left;
   text-decoration: none;
 }
@@ -613,8 +636,9 @@ button {
 
 .card-title {
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 /* ---------- badges ---------- */
@@ -624,8 +648,8 @@ button {
   gap: 4px;
   padding: 2px 10px;
   border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   line-height: 1.6;
   white-space: nowrap;
 }
@@ -654,7 +678,7 @@ button {
   padding: 0 7px;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 11px;
+  font-size: var(--fs-2xs);
 }
 
 /* ---------- switch ---------- */
@@ -749,7 +773,7 @@ button {
   border-radius: var(--radius-sm);
   background: var(--text);
   color: var(--bg);
-  font-size: 13px;
+  font-size: var(--fs-xs);
   line-height: 1.45;
   text-align: left;
   box-shadow: var(--shadow-lg);
@@ -809,7 +833,7 @@ button {
   background-position: right 10px center;
   background-size: 16px;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 
@@ -859,8 +883,9 @@ button {
 
 .modal-header h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 600;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .modal-header .icon-button {
@@ -894,7 +919,7 @@ button {
 }
 
 .modal-note {
-  font-size: 13px;
+  font-size: var(--fs-xs);
 }
 
 .link-button {
@@ -902,7 +927,7 @@ button {
   border: 0;
   background: none;
   color: var(--primary);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -941,8 +966,9 @@ button {
   border-radius: 50%;
   background: var(--primary);
   color: var(--on-primary);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
 }
 
 /* "*" notes from the terms source: shown as a softer callout under the numbered conditions. */
@@ -953,13 +979,13 @@ button {
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--warning-soft) 70%, transparent);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .terms-notes-title {
   margin: 0 0 6px !important;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--warning);
@@ -974,7 +1000,7 @@ button {
 
 .terms-notes a {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: var(--fw-medium);
 }
 
 .modal-footer {
@@ -1003,7 +1029,7 @@ button {
   border-radius: var(--radius-sm);
   background: var(--text);
   color: var(--bg);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   box-shadow: var(--shadow-lg);
   animation: pop-in 0.18s ease-out;
 }
@@ -1044,8 +1070,8 @@ button {
 }
 
 .demo-label {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-subtle);
@@ -1142,15 +1168,15 @@ button {
 
 .landing-welcome {
   margin: 44px 0 0;
-  font-size: 18px;
-  font-weight: 500;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
   color: var(--text-muted);
 }
 
 .landing-title {
   margin: 0;
-  font-size: clamp(40px, 5vw, 56px);
-  font-weight: 700;
+  font-size: var(--fs-display);
+  font-weight: var(--fw-bold);
   line-height: 1.1;
   letter-spacing: -0.02em;
   color: var(--primary);
@@ -1173,18 +1199,18 @@ button {
 
 .landing-note {
   margin: 14px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-subtle);
 }
 
 .landing-note a {
   color: var(--primary);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .landing-footer {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--fs-2xs);
   color: var(--text-subtle);
   text-align: center;
 }
@@ -1219,14 +1245,14 @@ button {
 
 .profile-name {
   margin: 24px 0 6px;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .profile-email {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -1239,7 +1265,7 @@ button {
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1253,14 +1279,14 @@ button {
 
 .license-caption {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 .license-name {
   margin: 6px 0 12px;
-  font-size: 30px;
-  font-weight: 600;
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-semibold);
   line-height: 1.2;
   color: var(--text);
 }
@@ -1274,7 +1300,7 @@ button {
 
 .license-expiry {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--warning);
 }
 
@@ -1285,7 +1311,7 @@ button {
 
 .request-hint {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1299,7 +1325,7 @@ button {
   padding-top: 24px;
   border-top: 1px solid var(--border);
   text-align: left;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text-muted);
 }
 
@@ -1347,7 +1373,8 @@ button {
   justify-content: flex-start;
   min-height: 56px;
   padding-inline: 20px;
-  font-size: 16px;
+  font-size: var(--fs-md);
+  text-align: left;
 }
 
 .meeting-actions .btn .icon:last-child {
@@ -1370,7 +1397,7 @@ button {
 
 .meeting-hint {
   margin: 28px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-subtle);
   text-align: center;
 }
@@ -1421,8 +1448,8 @@ button {
   align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 22px;
-  font-weight: 600;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--text);
 }
@@ -1433,7 +1460,7 @@ button {
 
 .expiry-desc {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1478,7 +1505,7 @@ button {
 .expiry-option:has(input:checked) {
   border-color: var(--primary);
   background: color-mix(in srgb, var(--primary-soft) 70%, transparent);
-  font-weight: 500;
+  font-weight: var(--fw-medium);
 }
 
 .expiry-option:focus-within {
@@ -1508,8 +1535,8 @@ button {
 
 .quota-group-label {
   margin: 0 0 -6px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-subtle);
@@ -1524,11 +1551,11 @@ button {
 }
 
 .quota-item-head .badge {
-  font-size: 12px;
+  font-size: var(--fs-2xs);
 }
 
 .quota-left {
-  font-size: 12px;
+  font-size: var(--fs-2xs);
   color: var(--text-subtle);
 }
 
@@ -1561,7 +1588,7 @@ button {
 
 .quota-numbers {
   margin: 6px 0 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -1591,21 +1618,21 @@ button {
 
 .org-heading h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 1.3;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .org-heading .org-count {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 .org-select {
   min-height: 42px;
   max-width: 100%;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
 }
 
 .users-header .field {
@@ -1635,8 +1662,8 @@ button {
   background: color-mix(in srgb, var(--surface-2) 72%, transparent);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-align: left;
   text-transform: uppercase;
@@ -1679,18 +1706,18 @@ button {
 
 .user-name {
   display: block;
-  font-weight: 600;
+  font-weight: var(--fw-medium);
   line-height: 1.35;
 }
 
 .user-email {
   display: block;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
 .last-use {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
@@ -1717,8 +1744,8 @@ button {
   padding: 4px 8px 4px 14px;
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   border-radius: 999px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   line-height: 1.3;
   white-space: nowrap;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
@@ -1742,13 +1769,9 @@ button {
   min-width: 0;
 }
 
-.modal-title-group h2 {
-  line-height: 1.3;
-}
-
 .modal-subtitle {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   word-break: break-all;
 }
@@ -1778,13 +1801,13 @@ button {
 
 .modal-section-title {
   margin: 0;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
   color: var(--text);
 }
 
 .modal-section-meta {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1827,7 +1850,7 @@ button {
 }
 
 .license-action-meta {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -1839,15 +1862,15 @@ button {
   padding: 4px 10px;
   border-radius: 999px;
   background: var(--surface-2);
-  font-size: 12px;
-  font-weight: 500;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   color: var(--text-muted);
 }
 
 .btn-sm {
   min-height: 36px;
   padding: 6px 14px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
 }
 
 .btn:disabled {
@@ -1866,7 +1889,7 @@ button {
 .usage-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--text);
 }
 
@@ -1875,8 +1898,8 @@ button {
   top: 0;
   padding: 8px 12px;
   background: var(--surface-2);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   letter-spacing: 0.04em;
   text-align: left;
   text-transform: uppercase;
@@ -1929,7 +1952,9 @@ button {
 
 .no-permission h1 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .no-permission p {
@@ -1946,8 +1971,9 @@ button {
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 600;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
 }
 
 .page-subtitle {
@@ -1979,7 +2005,7 @@ button {
   align-items: center;
   gap: 10px;
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--fw-medium);
 }
 
 /* The day picked in step 2, echoed to the right of the step 3 label. */
@@ -1989,8 +2015,8 @@ button {
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   white-space: nowrap;
 }
 
@@ -2003,12 +2029,14 @@ button {
   border-radius: 50%;
   background: var(--primary);
   color: var(--on-primary);
-  font-size: 12px;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
 }
 
 .booking-hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -2049,11 +2077,12 @@ button {
 
 .license-option-body {
   display: grid;
+  justify-items: start;
   gap: 6px;
 }
 
 .license-option-desc {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
 }
 
@@ -2078,7 +2107,7 @@ button {
 }
 
 .calendar-title {
-  font-weight: 600;
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2091,8 +2120,8 @@ button {
 
 .calendar-weekdays {
   margin-bottom: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
   text-align: center;
   color: var(--text-subtle);
 }
@@ -2110,9 +2139,11 @@ button {
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
   font-variant-numeric: tabular-nums;
+  line-height: var(--lh-tight);
+  text-align: center;
 }
 
 .calendar-day:disabled {
@@ -2135,8 +2166,11 @@ button {
 }
 
 .calendar-day-label {
-  font-size: 10px;
-  font-weight: 500;
+  font-size: var(--fs-2xs);
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  /* One line: a wrapped "จองแล้ว" spills out of the day cell. */
+  white-space: nowrap;
 }
 
 .calendar-day[aria-pressed="true"] {
@@ -2164,8 +2198,8 @@ button {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--glass-inset);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
@@ -2202,7 +2236,7 @@ button {
   background: var(--glass-inset);
   color: var(--text);
   font-family: inherit;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   resize: vertical;
 }
 
@@ -2217,7 +2251,7 @@ button {
 
 .textarea-count {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--fs-2xs);
   text-align: right;
   color: var(--text-subtle);
 }
@@ -2251,19 +2285,26 @@ button {
 }
 
 .booking-item-date {
-  font-weight: 600;
+  font-weight: var(--fw-medium);
 }
 
 .booking-item-slots {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
 .booking-item-note {
-  font-size: 13px;
+  font-size: var(--fs-xs);
   color: var(--text-muted);
   word-break: break-word;
+}
+
+/* ---------- Thai text ---------- */
+/* Tracking splits Thai tone marks from their consonants, so uppercase-style labels drop it in Thai. */
+:lang(th) :is(.avatar, .demo-label, .quota-group-label, .terms-notes-title, .users-table th, .usage-table th),
+:lang(th) .users-table td[data-label]::before {
+  letter-spacing: 0;
 }
 
 /* ==========================================================================
@@ -2311,7 +2352,7 @@ button {
 
 @media (max-width: 767px) {
   body {
-    font-size: 14px;
+    font-size: var(--fs-sm);
   }
 
   .landing {
@@ -2428,12 +2469,12 @@ button {
   }
 
   .usage-table th {
-    font-size: 11px;
+    font-size: var(--fs-2xs);
     letter-spacing: 0.02em;
   }
 
   .usage-table td {
-    font-size: 13px;
+    font-size: var(--fs-xs);
   }
 
   /* Let the date column wrap so all three columns fit on phones. */
@@ -2444,8 +2485,8 @@ button {
   .users-table td[data-label]::before {
     content: attr(data-label);
     display: block;
-    font-size: 11px;
-    font-weight: 600;
+    font-size: var(--fs-2xs);
+    font-weight: var(--fw-medium);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--text-subtle);
@@ -2466,7 +2507,7 @@ button {
 
   .demo-switcher .segmented button {
     padding-inline: 8px;
-    font-size: 12px;
+    font-size: var(--fs-2xs);
   }
 
   .toast-region {
@@ -2488,7 +2529,12 @@ button {
 
   .calendar-day {
     min-height: 36px;
-    font-size: 12px;
+    font-size: var(--fs-2xs);
+  }
+
+  /* Only text below 12px: "Booked" must fit the narrow phone calendar cells. */
+  .calendar-day-label {
+    font-size: 11px;
   }
 }
 
