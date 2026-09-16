@@ -103,6 +103,19 @@ blur, a light edge and a top highlight. Tune via the `--glass-*` tokens; browser
 `<head>` with weights 400/500/600/700 and italic 400; set via `--font-sans` in `styles.css`.
 Fallback: Segoe UI / Leelawadee UI / Tahoma. Requires internet access to load.
 
+Sizes, weights and line heights are tokens in `:root`:
+
+- **Size** (15px base; body drops to 14px on phones): `--fs-2xs` 12 · `--fs-xs` 13 · `--fs-sm` 14 ·
+  `--fs-base` 15 · `--fs-md` 16 · `--fs-lg` 18 · `--fs-xl` 20 · `--fs-2xl` 24 · `--fs-3xl` 30 ·
+  `--fs-display` 40–56. Nothing goes below 12px except the phone calendar "Booked" label (11px).
+  Avatar initials scale with the avatar and don't use the tokens.
+- **Weight** (Kanit runs heavy, so the hierarchy is kept light): `--fw-bold` 700 for the landing title only,
+  `--fw-semibold` 600 for page, card and modal titles and key values, `--fw-medium` 500 for buttons,
+  labels, badges and table headers, `--fw-regular` 400 for body text.
+- **Line height:** `--lh-tight` 1.2 (buttons, calendar days), `--lh-heading` 1.35, `--lh-body` 1.55.
+- Uppercase labels drop their letter-spacing when the page language is Thai (`:lang(th)`), so tone
+  marks stay attached to their consonants.
+
 ## Structure
 
 ```
