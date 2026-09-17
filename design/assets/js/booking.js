@@ -2,12 +2,14 @@
 
 /**
  * 3. ZOOM Booking Center — book a Temp. Pro or Large Meeting license (from the CMU Shared
- * Pool, see manage-users.js) for one day, in one or more time slots, then manage the
+ * Pool, see mock-data.js) for one day, in one or more time slots, then manage the
  * resulting bookings.
  *
  * A booking is one day + one or more of the fixed 5.5-hour time slots; only one day can be
  * picked per booking. Anyone can book either license for any available day; saving assigns
- * it immediately (no admin approval). Daily capacity mirrors the Shared Pool quotas CMU holds
+ * it immediately (no admin approval) once the user confirms the summary modal. Step 4 collects
+ * who the booking is for (the signed-in user, or someone else by CMU email), a required title
+ * and an optional note. Daily capacity mirrors the Shared Pool quotas CMU holds
  * for everyone (Temp. Pro 3, Large Meeting 2) — one booking uses one day of that quota
  * regardless of how many time slots it covers. A day is simply disabled once it's unavailable
  * (full or already booked by the user); once a day is picked, its individual time slots are
@@ -18,11 +20,12 @@
  */
 (function () {
   const { LICENSES, EVENTS, t, formatDate, showToast, openModal, closeModal } = window.App;
+  const { SIGNED_IN_USER } = window.MockData;
 
   const LICENSE_TEMP_PRO = LICENSES.TEMP_PRO;
-  const LICENSE_LARGE_MEETING = 'largeMeeting'; // matches ADDON_LARGE_MEETING / badge-largeMeeting in manage-users.js
+  const LICENSE_LARGE_MEETING = 'largeMeeting'; // matches ADDON_LARGE_MEETING / badge-largeMeeting in mock-data.js
 
-  // Shared Pool daily capacity — mirrors CMU's tempPro/largeMeeting quotas in manage-users.js (ORGANIZATIONS).
+  // Shared Pool daily capacity — mirrors CMU's tempPro/largeMeeting quotas in mock-data.js (ORGANIZATIONS).
   const DAILY_CAPACITY = Object.freeze({ [LICENSE_TEMP_PRO]: 3, [LICENSE_LARGE_MEETING]: 2 });
 
   // Three fixed 5.5-hour slots covering the bookable day, 5:30 AM to 10:00 PM.
@@ -36,9 +39,15 @@
   const BOOKING_LEAD_DAYS = 1; // earliest bookable day is tomorrow
   const BOOKING_WINDOW_MONTHS = 6; // bookable through the end of the 6th month from today
   const NOTE_MAX_LENGTH = 200;
+  const CMU_EMAIL_DOMAIN = '@cmu.ac.th';
+  // Local part only (the domain is a fixed suffix): letters, digits, dot, underscore, hyphen.
+  const EMAIL_LOCAL_PATTERN = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/i;
+  const BOOK_FOR = Object.freeze({ SELF: 'self', OTHER: 'other' });
+  const CONFIRM_MODAL_ID = 'confirm-booking-modal';
+  const CANCEL_MODAL_ID = 'cancel-booking-modal';
   // Same locale mapping app.js uses internally for Intl formatting, kept here since it isn't exported.
   const DATE_LOCALES = Object.freeze({ en: 'en-GB', th: 'th-TH' });
-  // Fixed "today" — matches manage-users.js's REFERENCE_DATE so the demo data stays consistent
+  // Fixed "today" — matches mock-data.js's REFERENCE_DATE so the demo data stays consistent
   // across pages and stable between visits.
   const REFERENCE_DATE = new Date(2026, 8, 14);
 
@@ -131,8 +140,8 @@
   // The signed-in demo user's own bookings. Seeded with one of each license so the list isn't empty.
   let nextBookingId = 1;
   const bookings = [
-    { id: nextBookingId++, license: LICENSE_TEMP_PRO, dateKey: dateKey(addDays(WINDOW_START, 5)), slots: ['midday'], note: '' },
-    { id: nextBookingId++, license: LICENSE_LARGE_MEETING, dateKey: dateKey(addDays(WINDOW_START, 10)), slots: ['morning', 'evening'], note: '' }
+    { id: nextBookingId++, license: LICENSE_TEMP_PRO, dateKey: dateKey(addDays(WINDOW_START, 5)), slots: ['midday'], title: 'Faculty seminar', bookedFor: null, note: '' },
+    { id: nextBookingId++, license: LICENSE_LARGE_MEETING, dateKey: dateKey(addDays(WINDOW_START, 10)), slots: ['morning', 'evening'], title: 'Orientation for new students', bookedFor: 'somchai.k@cmu.ac.th', note: '' }
   ];
 
   const view = {
@@ -140,6 +149,9 @@
     selectedDate: null,
     selectedSlots: new Set(),
     calendarMonth: new Date(WINDOW_START.getFullYear(), WINDOW_START.getMonth(), 1),
+    bookFor: BOOK_FOR.SELF,
+    // Only show the email error once the user has typed something.
+    emailTouched: false,
     cancelBookingId: null
   };
 
@@ -252,9 +264,52 @@
     els.noteCount.textContent = `${els.noteInput.value.length}/${NOTE_MAX_LENGTH}`;
   }
 
+  /* ---------- details: book for, title ---------- */
+
+  function emailLocalPart() {
+    return els.emailInput.value.trim().toLowerCase();
+  }
+
+  /** i18n key describing why the "someone else" email is invalid, or null when valid. */
+  function emailError() {
+    const local = emailLocalPart();
+    if (!EMAIL_LOCAL_PATTERN.test(local)) {
+      return 'booking.emailInvalid';
+    }
+    if (`${local}${CMU_EMAIL_DOMAIN}` === SIGNED_IN_USER.email) {
+      return 'booking.emailSelf';
+    }
+    return null;
+  }
+
+  /** Full email of the person the booking is for, or null when booking for oneself. */
+  function bookedForEmail() {
+    return view.bookFor === BOOK_FOR.OTHER ? `${emailLocalPart()}${CMU_EMAIL_DOMAIN}` : null;
+  }
+
+  function bookingTitle() {
+    return els.titleInput.value.trim();
+  }
+
+  function detailsValid() {
+    const emailOk = view.bookFor === BOOK_FOR.SELF || emailError() === null;
+    return emailOk && bookingTitle().length > 0;
+  }
+
+  function renderDetails() {
+    const isOther = view.bookFor === BOOK_FOR.OTHER;
+    els.emailField.hidden = !isOther;
+    els.emailInput.required = isOther;
+    const errorKey = isOther && view.emailTouched && emailLocalPart() ? emailError() : null;
+    els.emailError.hidden = !errorKey;
+    els.emailError.textContent = errorKey ? t(errorKey) : '';
+    els.emailInput.setAttribute('aria-invalid', String(Boolean(errorKey)));
+    els.emailInput.closest('.input-group').classList.toggle('is-invalid', Boolean(errorKey));
+  }
+
   function updateSaveButton() {
     const count = view.selectedSlots.size;
-    els.saveButton.disabled = !view.license || !view.selectedDate || count === 0;
+    els.saveButton.disabled = !view.license || !view.selectedDate || count === 0 || !detailsValid();
     els.saveLabel.textContent = count > 1 ? t('booking.saveCount', { count }) : t('booking.save');
   }
 
@@ -265,12 +320,17 @@
     const note = booking.note
       ? `<p class="booking-item-note">${escapeHtml(booking.note)}</p>`
       : '';
+    const bookedFor = booking.bookedFor
+      ? `<span class="booking-item-for">${escapeHtml(t('booking.forLabel', { email: booking.bookedFor }))}</span>`
+      : '';
     return `
       <div class="booking-item">
         <div class="booking-item-body">
+          <span class="booking-item-title">${escapeHtml(booking.title)}</span>
           <span class="booking-item-date">${escapeHtml(formatDate(parseDateKey(booking.dateKey)))}</span>
           <span class="badge badge-${booking.license}">${escapeHtml(licenseLabel(booking.license))}</span>
           <span class="booking-item-slots">${escapeHtml(slotsText)}</span>
+          ${bookedFor}
           ${note}
         </div>
         <button type="button" class="btn btn-outline-danger btn-sm" data-cancel-booking="${booking.id}">
@@ -290,6 +350,7 @@
     renderCalendar();
     renderPickedDateChip();
     renderTimeSlots();
+    renderDetails();
     renderNoteCount();
     updateSaveButton();
     renderBookingsList();
@@ -329,12 +390,58 @@
     updateSaveButton();
   }
 
-  function onSave() {
-    const license = view.license;
-    const key = view.selectedDate;
-    if (!license || !key || view.selectedSlots.size === 0) {
+  function hasCompleteSelection() {
+    return Boolean(view.license && view.selectedDate && view.selectedSlots.size > 0) && detailsValid();
+  }
+
+  /** Summary rows (license, date, time slots, note) for the confirm modal. */
+  function renderConfirmSummary() {
+    if (!hasCompleteSelection()) {
       return;
     }
+    const slotItems = sortSlotIds([...view.selectedSlots])
+      .map((id) => `<li>${escapeHtml(timeSlotLabel(timeSlotById(id)))}</li>`)
+      .join('');
+    const email = bookedForEmail();
+    const bookedForValue = email
+      ? escapeHtml(email)
+      : `${escapeHtml(t('confirmBooking.self'))} · ${escapeHtml(SIGNED_IN_USER.email)}`;
+    const note = els.noteInput.value.trim();
+    const noteValue = note
+      ? escapeHtml(note)
+      : `<span class="is-empty">${escapeHtml(t('confirmBooking.noNote'))}</span>`;
+    els.confirmSummary.innerHTML = `
+      <dt>${escapeHtml(t('confirmBooking.license'))}</dt>
+      <dd><span class="badge badge-${view.license}">${escapeHtml(licenseLabel(view.license))}</span></dd>
+      <dt>${escapeHtml(t('confirmBooking.date'))}</dt>
+      <dd>${escapeHtml(formatDate(parseDateKey(view.selectedDate)))}</dd>
+      <dt>${escapeHtml(t('confirmBooking.timeSlots'))}</dt>
+      <dd><ul class="booking-summary-slots">${slotItems}</ul></dd>
+      <dt>${escapeHtml(t('confirmBooking.bookedFor'))}</dt>
+      <dd>${bookedForValue}</dd>
+      <dt>${escapeHtml(t('confirmBooking.bookingTitle'))}</dt>
+      <dd>${escapeHtml(bookingTitle())}</dd>
+      <dt>${escapeHtml(t('confirmBooking.note'))}</dt>
+      <dd>${noteValue}</dd>`;
+  }
+
+  /** Save button: show the booking summary; the booking is only saved once confirmed. */
+  function onSave() {
+    if (!hasCompleteSelection()) {
+      return;
+    }
+    renderConfirmSummary();
+    openModal(CONFIRM_MODAL_ID);
+  }
+
+  function onConfirmBooking() {
+    closeModal(els.confirmModal);
+    if (!hasCompleteSelection()) {
+      console.error('[booking] Confirm clicked without a complete selection');
+      return;
+    }
+    const license = view.license;
+    const key = view.selectedDate;
     // Defensive re-check: guards against the day filling up between selection and save.
     if (!userBooking(key, license) && remaining(key, license) <= 0) {
       showToast(t('booking.dayFull'), 'error');
@@ -346,18 +453,42 @@
 
     const slots = sortSlotIds([...view.selectedSlots]);
     const note = els.noteInput.value.trim();
-    bookings.push({ id: nextBookingId++, license, dateKey: key, slots, note });
+    bookings.push({ id: nextBookingId++, license, dateKey: key, slots, title: bookingTitle(), bookedFor: bookedForEmail(), note });
 
     view.selectedDate = null;
     view.selectedSlots = new Set();
-    els.noteInput.value = '';
+    resetDetails();
     render();
     showToast(t('booking.saved', { license: licenseLabel(license), date: formatDate(parseDateKey(key)), count: slots.length }), 'success');
   }
 
+  function resetDetails() {
+    view.bookFor = BOOK_FOR.SELF;
+    view.emailTouched = false;
+    els.bookForRadios.forEach((radio) => {
+      radio.checked = radio.value === BOOK_FOR.SELF;
+    });
+    els.emailInput.value = '';
+    els.titleInput.value = '';
+    els.noteInput.value = '';
+  }
+
+  function onBookForChange(value) {
+    if (!Object.values(BOOK_FOR).includes(value)) {
+      console.error('[booking] Unknown "book for" option', value);
+      return;
+    }
+    view.bookFor = value;
+    renderDetails();
+    updateSaveButton();
+    if (value === BOOK_FOR.OTHER) {
+      els.emailInput.focus();
+    }
+  }
+
   function onCancelBooking(id) {
     view.cancelBookingId = id;
-    openModal('cancel-booking-modal');
+    openModal(CANCEL_MODAL_ID);
   }
 
   function onConfirmCancelBooking() {
@@ -406,8 +537,28 @@
       }
     });
 
+    els.bookForGroup.addEventListener('change', (event) => {
+      const radio = event.target.closest('[data-book-for]');
+      if (radio) {
+        onBookForChange(radio.value);
+      }
+    });
+
+    els.emailInput.addEventListener('input', () => {
+      // Pasting a full address keeps just the local part, since the domain is fixed.
+      const value = els.emailInput.value;
+      if (value.toLowerCase().endsWith(CMU_EMAIL_DOMAIN)) {
+        els.emailInput.value = value.slice(0, -CMU_EMAIL_DOMAIN.length);
+      }
+      view.emailTouched = true;
+      renderDetails();
+      updateSaveButton();
+    });
+
+    els.titleInput.addEventListener('input', updateSaveButton);
     els.noteInput.addEventListener('input', renderNoteCount);
     els.saveButton.addEventListener('click', onSave);
+    els.confirmBooking.addEventListener('click', onConfirmBooking);
 
     els.bookingList.addEventListener('click', (event) => {
       const button = event.target.closest('[data-cancel-booking]');
@@ -418,7 +569,12 @@
 
     els.confirmCancel.addEventListener('click', onConfirmCancelBooking);
 
-    document.addEventListener(EVENTS.LANG, render);
+    document.addEventListener(EVENTS.LANG, () => {
+      render();
+      if (els.confirmModal.open) {
+        renderConfirmSummary();
+      }
+    });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -434,13 +590,21 @@
       pickDateHint: '[data-pick-date-hint]',
       pickedDateChip: '[data-picked-date]',
       timeSlotPicker: '[data-time-slot-picker]',
+      bookForGroup: '[data-book-for-group]',
+      emailField: '[data-email-field]',
+      emailInput: '[data-email-input]',
+      emailError: '[data-email-error]',
+      titleInput: '[data-title-input]',
       noteInput: '[data-note-input]',
       noteCount: '[data-note-count]',
       saveButton: '[data-save-booking]',
       saveLabel: '[data-save-label]',
       bookingList: '[data-booking-list]',
       bookingEmpty: '[data-booking-empty]',
-      cancelModal: '#cancel-booking-modal',
+      confirmModal: `#${CONFIRM_MODAL_ID}`,
+      confirmSummary: '[data-booking-summary]',
+      confirmBooking: '[data-confirm-booking]',
+      cancelModal: `#${CANCEL_MODAL_ID}`,
       confirmCancel: '[data-confirm-cancel-booking]'
     };
     try {
@@ -451,6 +615,7 @@
         }
         els[key] = el;
       });
+      els.bookForRadios = [...els.bookForGroup.querySelectorAll('[data-book-for]')];
       bindEvents();
       render();
     } catch (error) {

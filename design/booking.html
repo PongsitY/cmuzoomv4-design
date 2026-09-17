@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="assets/css/styles.css">
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/mock-data.js"></script>
   <script src="assets/js/booking.js" defer></script>
 </head>
 <body data-demo-switcher>
@@ -25,6 +26,10 @@
         <a class="nav-link" href="manage-users.html" data-admin-only>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
           <span data-i18n="menu.manageUsers">Manage Users</span>
+        </a>
+        <a class="nav-link" href="manage-admins.html" data-global-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span data-i18n="menu.manageAdmins">Manage Admin</span>
         </a>
         <a class="nav-link" href="booking.html" aria-current="page">
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
@@ -59,6 +64,10 @@
             <a class="menu-item" href="manage-users.html" data-admin-only>
               <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
               <span data-i18n="menu.manageUsers">Manage Users</span>
+            </a>
+            <a class="menu-item" href="manage-admins.html" data-global-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span data-i18n="menu.manageAdmins">Manage Admin</span>
             </a>
             <a class="menu-item" href="booking.html" aria-current="page">
               <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
@@ -165,10 +174,46 @@
         </div>
 
         <div class="booking-step">
-          <p class="booking-step-label"><span class="step-number">4</span> <span data-i18n="booking.step.note">Add a note (optional)</span></p>
-          <label class="visually-hidden" for="booking-note" data-i18n="booking.noteLabel">Note</label>
-          <textarea class="textarea" id="booking-note" rows="3" maxlength="200" data-note-input data-i18n-placeholder="booking.notePlaceholder"></textarea>
-          <p class="textarea-count" data-note-count>0/200</p>
+          <p class="booking-step-label"><span class="step-number">4</span> <span data-i18n="booking.step.details">Add details</span></p>
+
+          <fieldset class="booking-field">
+            <legend class="booking-field-label" data-i18n="booking.bookFor">Book for</legend>
+            <div class="choice-group" data-book-for-group>
+              <label class="choice-option">
+                <input type="radio" name="booking-for" value="self" data-book-for checked>
+                <span data-i18n="booking.forSelf">Myself</span>
+              </label>
+              <!-- "Someone else" with its email box beside it (shown only when selected). -->
+              <div class="choice-row">
+                <label class="choice-option">
+                  <input type="radio" name="booking-for" value="other" data-book-for>
+                  <span data-i18n="booking.forOther">Someone else</span>
+                </label>
+                <div class="input-group" data-email-field hidden>
+                  <label class="visually-hidden" for="booking-email" data-i18n="booking.emailLabel">Email (CMU account Only)</label>
+                  <input class="input" id="booking-email" type="text" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false"
+                    maxlength="64" aria-required="true" aria-describedby="booking-email-error" data-email-input data-i18n-placeholder="booking.emailPlaceholder">
+                  <span class="input-suffix" data-email-domain>@cmu.ac.th</span>
+                </div>
+              </div>
+              <p class="field-error" id="booking-email-error" data-email-error hidden></p>
+            </div>
+          </fieldset>
+
+          <div class="booking-field booking-field-group">
+            <label class="booking-field-label" for="booking-title">
+              <span data-i18n="booking.titleLabel">Title</span> <span class="required-mark" aria-hidden="true">*</span>
+            </label>
+            <input class="input" id="booking-title" type="text" maxlength="100" aria-required="true" data-title-input data-i18n-placeholder="booking.titlePlaceholder">
+          </div>
+
+          <div class="booking-field booking-field-group">
+            <label class="booking-field-label" for="booking-note">
+              <span data-i18n="booking.noteLabel">Note</span> <span class="optional-mark" data-i18n="booking.optional">(optional)</span>
+            </label>
+            <textarea class="textarea" id="booking-note" rows="3" maxlength="200" data-note-input data-i18n-placeholder="booking.notePlaceholder"></textarea>
+            <p class="textarea-count" data-note-count>0/200</p>
+          </div>
         </div>
 
         <button type="button" class="btn btn-primary btn-lg btn-block" data-save-booking disabled>
@@ -221,6 +266,27 @@
     </div>
   </dialog>
 
+  <!-- Booking summary shown before saving: filled by booking.js from the current selection. -->
+  <dialog class="modal" id="confirm-booking-modal" aria-labelledby="confirm-booking-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg></span>
+        <h2 id="confirm-booking-title" data-i18n="confirmBooking.title">Confirm your booking</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-i18n="confirmBooking.body">Please check the details below before confirming.</p>
+        <dl class="booking-summary" data-booking-summary></dl>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-confirm-booking data-i18n="confirmBooking.confirm">Confirm booking</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog class="modal" id="cancel-booking-modal" aria-labelledby="cancel-booking-title">
     <div class="modal-panel">
       <div class="modal-header">
@@ -235,7 +301,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
-        <button type="button" class="btn btn-danger" data-confirm-cancel-booking data-i18n="cancelBooking.confirm">Cancel booking</button>
+        <button type="button" class="btn btn-danger" data-confirm-cancel-booking data-i18n="cancelBooking.confirm">Confirm</button>
       </div>
     </div>
   </dialog>

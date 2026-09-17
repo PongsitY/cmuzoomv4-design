@@ -3,7 +3,7 @@
 Clickable HTML/CSS/JS design prototype for the CMU ZOOM portal (Teaching and Learning Innovation Center,
 Chiang Mai University).
 
-- `design/` — the prototype (landing, user profile, manage users, ZOOM booking center). See
+- `design/` — the prototype (landing, user profile, manage users, manage admin, ZOOM booking center). See
   [design/README.md](design/README.md).
 - `images/` — logos and background photos used by the pages.
 

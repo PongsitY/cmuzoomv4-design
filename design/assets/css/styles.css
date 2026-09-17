@@ -611,6 +611,10 @@ button {
   display: none !important;
 }
 
+:root:not([data-role="global"]) [data-global-only] {
+  display: none !important;
+}
+
 /* Landing page: shows the Login button when signed out, the two action buttons when signed in. */
 :root[data-auth="out"] [data-auth-show="in"],
 :root[data-auth="in"] [data-auth-show="out"] {
@@ -912,6 +916,11 @@ button {
   padding: 0 24px 8px;
   overflow-y: auto;
   color: var(--text-muted);
+}
+
+/* Modals closed only by the header "x" have no footer: give the body the footer's bottom spacing. */
+.modal-body:last-child {
+  padding-bottom: 22px;
 }
 
 .modal-body p {
@@ -1937,6 +1946,48 @@ button {
   color: var(--text-subtle);
 }
 
+/* ---------- manage admins ---------- */
+.org-heading h1.card-title {
+  margin-bottom: 8px;
+  font-size: var(--fs-md);
+}
+
+.users-table .col-action {
+  width: 140px;
+  text-align: right;
+}
+
+.admin-candidates {
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  margin-top: 12px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.admin-candidate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.admin-candidate:last-child {
+  border-bottom: 0;
+}
+
+.admin-candidate .user-cell {
+  flex: 1;
+}
+
+.admin-candidates .usage-empty {
+  padding: 24px 12px;
+}
+
 .no-permission {
   max-width: 480px;
   margin: 48px auto;
@@ -2190,7 +2241,8 @@ button {
   pointer-events: none;
 }
 
-.time-slot-option {
+.time-slot-option,
+.choice-option {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -2204,17 +2256,20 @@ button {
   transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
-.time-slot-option:has(input:not(:disabled)):hover {
+.time-slot-option:has(input:not(:disabled)):hover,
+.choice-option:hover {
   border-color: var(--border-strong);
 }
 
-.time-slot-option:has(input:checked) {
+.time-slot-option:has(input:checked),
+.choice-option:has(input:checked) {
   border-color: var(--primary);
   background: var(--primary-soft);
   color: var(--primary);
 }
 
-.time-slot-option:has(input:focus-visible) {
+.time-slot-option:has(input:focus-visible),
+.choice-option:has(input:focus-visible) {
   box-shadow: var(--focus-ring);
 }
 
@@ -2224,6 +2279,129 @@ button {
   color: var(--text-subtle);
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ---------- booking details (step 4) ---------- */
+.booking-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.booking-field[hidden] {
+  display: none;
+}
+
+/* Separates the Book for / Title / Note groups; the email box stays close to Book for. */
+.booking-field-group {
+  margin-top: 12px;
+}
+
+.booking-field-label {
+  padding: 0;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text);
+}
+
+.required-mark {
+  color: var(--danger);
+}
+
+.optional-mark {
+  font-weight: var(--fw-regular);
+  color: var(--text-subtle);
+}
+
+.choice-group {
+  display: grid;
+  gap: 10px;
+}
+
+.input {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-inset);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+}
+
+.input::placeholder {
+  color: var(--text-subtle);
+}
+
+.input:focus-visible {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* Text input with a fixed, non-editable suffix (e.g. the @cmu.ac.th email domain). */
+.input-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-inset);
+  overflow: hidden;
+}
+
+.input-group:focus-within {
+  border-color: var(--primary);
+  box-shadow: var(--focus-ring);
+}
+
+.input-group .input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.input-suffix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-left: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* "Someone else" is full width; once selected, its email box appears beside it and they split the row. */
+.choice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.choice-row:has(> .input-group:not([hidden])) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.input-group[hidden] {
+  display: none;
+}
+
+.input-group.is-invalid {
+  border-color: var(--danger);
+}
+
+.field-error {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--danger);
 }
 
 /* ---------- note textarea ---------- */
@@ -2279,13 +2457,26 @@ button {
 
 .booking-item-body {
   display: grid;
+  justify-items: start;
   gap: 6px;
   min-width: 0;
   margin-right: auto;
 }
 
+.booking-item-title {
+  font-weight: var(--fw-semibold);
+  color: var(--text);
+  word-break: break-word;
+}
+
 .booking-item-date {
   font-weight: var(--fw-medium);
+}
+
+.booking-item-for {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
 }
 
 .booking-item-slots {
@@ -2298,6 +2489,45 @@ button {
   font-size: var(--fs-xs);
   color: var(--text-muted);
   word-break: break-word;
+}
+
+/* Booking confirmation summary: label / value rows. */
+.booking-summary {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 12px 20px;
+  margin: 4px 0 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass-inset);
+}
+
+.booking-summary dt {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.booking-summary dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  word-break: break-word;
+}
+
+.booking-summary-slots {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.booking-summary .is-empty {
+  color: var(--text-subtle);
+  font-weight: var(--fw-regular);
+  font-style: italic;
 }
 
 /* ---------- Thai text ---------- */
@@ -2332,7 +2562,8 @@ button {
   }
 }
 
-@media (max-width: 860px) {
+/* Collapse the navbar links into the account menu before they overflow (Global Admin sees five). */
+@media (max-width: 1080px) {
   .nav-links {
     display: none;
   }
@@ -2344,7 +2575,9 @@ button {
   .menu-mobile-only {
     display: block;
   }
+}
 
+@media (max-width: 860px) {
   .profile-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2463,6 +2696,15 @@ button {
     grid-column: 1 / -1;
   }
 
+  /* Admins table has no second-line cells: keep the Revoke button beside the name. */
+  .admins-table tbody tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .admins-table td:first-child {
+    grid-column: auto;
+  }
+
   .usage-table th,
   .usage-table td {
     padding-inline: 8px;
@@ -2525,6 +2767,11 @@ button {
 
   .booking-card {
     padding: 20px;
+  }
+
+  .choice-row,
+  .choice-row:has(> .input-group:not([hidden])) {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .calendar-day {
