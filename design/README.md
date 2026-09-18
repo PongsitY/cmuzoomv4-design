@@ -70,6 +70,7 @@ Opening `design/index.html` directly from disk also works.
 - **License bubble → modal:** each row shows the license as a clickable bubble (Large Meeting as a
   second-line bubble). Clicking opens a modal with the user's meeting log for the last 30 days
   (date & time, duration, participants) and one row per license type with an Assign/Revoke button.
+  Each row's note is just the quota, e.g. "1 of 3 left"; the current license's row is highlighted.
   - Admin: Temp. Pro and Large Meeting rows are read-only ("Managed by Global Admin"). Admin also
     can't Assign Pro to a Temp. Pro user or Revoke Pro from a user with Large Meeting.
 - **License rules (mock):** Basic / Pro / Temp. Pro are exclusive (assigning one replaces the other);
