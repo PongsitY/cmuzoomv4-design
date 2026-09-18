@@ -1,34 +1,59 @@
 'use strict';
 
 /**
- * Manage Admin — Global Admin picks an organization, sees its admins, and assigns (via the
- * Add admin modal) or revokes (with confirmation) the Admin role. Admin and User roles get the
- * no-access notice.
+ * Admin Console — Global Admin picks an organization (or "All organizations") and gets a usage
+ * summary, the Pro license quota of every organization (editable), and the admins of the selected
+ * organization, which can be assigned (via the Add admin modal) or revoked (with confirmation).
+ * Admin and User roles get the no-access notice.
  *
  * Mock organizations/users/admins come from mock-data.js; all data is in-memory (resets on reload).
  */
 (function () {
-  const { ROLES, EVENTS, t, showToast, getRole, openModal, closeModal } = window.App;
-  const { SIGNED_IN_USER, ORGANIZATIONS, createUsersByOrg, createAdminsByOrg, escapeHtml, initials, orgName } = window.MockData;
+  const { ROLES, LICENSES, EVENTS, t, showToast, getRole, openModal, closeModal } = window.App;
+  const { ADDON_LARGE_MEETING, CMU_ORG_ID, ORGANIZATIONS, createUsersByOrg, createAdminsByOrg, escapeHtml, initials, orgName } = window.MockData;
 
   const ADD_MODAL_ID = 'add-admin-modal';
   const REVOKE_MODAL_ID = 'revoke-admin-modal';
+  const QUOTA_MODAL_ID = 'quota-modal';
+
+  // Filter value that means "every organization"; also the default view for Global Admin.
+  const ALL_ORGS = 'all';
+  const QUOTA_MAX = 999;
+  const PERCENT = 100;
+
+  // Temp. Pro and Large Meeting are lent from CMU's shared pool, so they are counted university-wide.
+  const CMU_ORG = ORGANIZATIONS.find((org) => org.id === CMU_ORG_ID);
 
   const usersByOrg = createUsersByOrg();
   const adminsByOrg = createAdminsByOrg();
+  // Page-local quota edits, like the Pro expiration interval on Manage Users: the shared
+  // ORGANIZATIONS list stays untouched, so other pages keep their own mock numbers.
+  const proQuotaByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, org.quotas.pro]));
 
   const view = {
-    orgId: SIGNED_IN_USER.orgId,
+    orgId: ALL_ORGS,
     candidateQuery: '',
-    pendingRevokeId: null
+    pendingRevoke: null,
+    pendingQuotaOrgId: null
   };
 
   const els = {};
 
   /* ---------- helpers ---------- */
 
+  function isAllOrgs() {
+    return view.orgId === ALL_ORGS;
+  }
+
+  /** The selected organization, or null while the filter is "All organizations". */
   function currentOrg() {
-    return ORGANIZATIONS.find((org) => org.id === view.orgId) || ORGANIZATIONS[0];
+    return isAllOrgs() ? null : ORGANIZATIONS.find((org) => org.id === view.orgId) || null;
+  }
+
+  /** Organizations the panels currently cover: all of them, or just the selected one. */
+  function scopedOrgs() {
+    const org = currentOrg();
+    return org ? [org] : ORGANIZATIONS;
   }
 
   function isGlobalAdmin() {
@@ -39,12 +64,36 @@
     return usersByOrg.get(org.id) || [];
   }
 
+  function allUsers() {
+    return [...usersByOrg.values()].flat();
+  }
+
   function orgAdminIds(org) {
     return adminsByOrg.get(org.id);
   }
 
+  function findOrg(orgId) {
+    return ORGANIZATIONS.find((org) => org.id === orgId) || null;
+  }
+
   function findUser(org, userId) {
-    return orgUsers(org).find((user) => user.id === userId);
+    return org ? orgUsers(org).find((user) => user.id === userId) : undefined;
+  }
+
+  function holdsLicense(user, type) {
+    return type === ADDON_LARGE_MEETING ? user.largeMeeting : user.license === type;
+  }
+
+  function proUsed(org) {
+    return orgUsers(org).filter((user) => user.license === LICENSES.PRO).length;
+  }
+
+  function proQuota(org) {
+    return proQuotaByOrg.get(org.id);
+  }
+
+  function percentOf(used, total) {
+    return total > 0 ? Math.round((used / total) * PERCENT) : PERCENT;
   }
 
   function userCell(user) {
@@ -58,51 +107,216 @@
       </div>`;
   }
 
-  /* ---------- rendering: page ---------- */
+  /* ---------- rendering: filter ---------- */
 
-  function renderOrgHeading(org) {
-    const count = orgAdminIds(org).size;
-    els.orgSelect.innerHTML = ORGANIZATIONS.map((item) =>
-      `<option value="${item.id}"${item.id === org.id ? ' selected' : ''}>${escapeHtml(orgName(item))}</option>`
+  function renderFilter() {
+    const options = [{ id: ALL_ORGS, label: t('admins.allOrgs') }]
+      .concat(ORGANIZATIONS.map((org) => ({ id: org.id, label: orgName(org) })));
+    els.orgSelect.innerHTML = options.map((option) =>
+      `<option value="${option.id}"${option.id === view.orgId ? ' selected' : ''}>${escapeHtml(option.label)}</option>`
     ).join('');
-    els.adminCount.textContent = count === 1 ? t('admins.countOne') : t('admins.count', { count });
-    els.addAdmin.setAttribute('aria-label', t('admins.addLabel', { org: orgName(org) }));
   }
 
-  function renderRow(user) {
+  /* ---------- rendering: usage summary ---------- */
+
+  /** Pro is summed over the organizations in view; the shared pool always counts university-wide. */
+  function licenseUsage(type, isPool) {
+    if (isPool) {
+      return {
+        used: allUsers().filter((user) => holdsLicense(user, type)).length,
+        total: CMU_ORG.quotas[type]
+      };
+    }
+    const orgs = scopedOrgs();
+    return {
+      used: orgs.reduce((sum, org) => sum + proUsed(org), 0),
+      total: orgs.reduce((sum, org) => sum + proQuota(org), 0)
+    };
+  }
+
+  /** The organizations a count covers: the shared pool is university-wide, Pro follows the filter. */
+  function scopeLabel(isPool) {
+    if (isPool) {
+      return t('manage.quotaGroupCmu');
+    }
+    const org = currentOrg();
+    return org ? orgName(org) : t('admins.allOrgs');
+  }
+
+  /** One license per tile: its badge in the license colour, the count, a bar and the scope. */
+  function licenseStat(type, isPool) {
+    const { used, total } = licenseUsage(type, isPool);
+    const percent = percentOf(used, total);
+    const isFull = used >= total;
+    const label = scopeLabel(isPool);
+    return `
+      <div class="stat">
+        <div class="stat-head">
+          <span class="badge badge-${type}">${escapeHtml(t(`license.${type}`))}</span>
+          <span class="stat-left">${escapeHtml(t('manage.left', { count: Math.max(total - used, 0) }))}</span>
+        </div>
+        <p class="stat-label">${escapeHtml(label)}</p>
+        <p class="stat-value">${escapeHtml(t('stats.ofTotal', { used, total }))}</p>
+        <div class="progress" role="progressbar" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${used}">
+          <div class="progress-bar${isFull ? ' is-full' : ''}" data-license="${type}" style="width:${Math.min(percent, PERCENT)}%"></div>
+        </div>
+        <p class="stat-sub">${escapeHtml(t(isPool ? 'stats.percentUsedPool' : 'stats.percentUsed', { percent }))}</p>
+      </div>`;
+  }
+
+  function renderStats() {
+    els.statGrid.innerHTML = [
+      licenseStat(LICENSES.PRO, false),
+      licenseStat(LICENSES.TEMP_PRO, true),
+      licenseStat(ADDON_LARGE_MEETING, true)
+    ].join('');
+  }
+
+  /* ---------- rendering: Pro quota table ---------- */
+
+  function renderQuotaRow(org) {
+    const used = proUsed(org);
+    const total = proQuota(org);
+    const percent = percentOf(used, total);
+    const isFull = used >= total;
+    const label = orgName(org);
+    return `
+      <tr>
+        <td>${escapeHtml(label)}</td>
+        <td data-label="${escapeHtml(t('adminQuota.colUsage'))}">
+          <div class="quota-cell">
+            <div class="progress" role="progressbar" aria-label="${escapeHtml(t('adminQuota.barLabel', { org: label }))}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${used}">
+              <div class="progress-bar${isFull ? ' is-full' : ''}" data-license="pro" style="width:${Math.min(percent, PERCENT)}%"></div>
+            </div>
+            <span class="quota-numbers">${escapeHtml(t('manage.used', { used, total, percent }))}</span>
+          </div>
+        </td>
+        <td class="col-action">
+          <button type="button" class="btn btn-sm btn-ghost" data-edit-quota data-org-id="${org.id}" aria-haspopup="dialog"
+            aria-label="${escapeHtml(t('adminQuota.editLabel', { org: label }))}">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-pencil"></use></svg>
+            <span>${escapeHtml(t('adminQuota.edit'))}</span>
+          </button>
+        </td>
+      </tr>`;
+  }
+
+  function renderQuotaTable() {
+    els.quotaRows.innerHTML = scopedOrgs().map(renderQuotaRow).join('');
+  }
+
+  /* ---------- rendering: admins table ---------- */
+
+  function renderRow(org, user) {
+    const orgCell = isAllOrgs()
+      ? `<td data-label="${escapeHtml(t('table.organization'))}">${escapeHtml(orgName(org))}</td>`
+      : '';
     return `
       <tr>
         <td>${userCell(user)}</td>
+        ${orgCell}
         <td class="col-action">
-          <button type="button" class="btn btn-sm btn-outline-danger" data-revoke-admin data-user-id="${user.id}"
+          <button type="button" class="btn btn-sm btn-outline-danger" data-revoke-admin data-user-id="${user.id}" data-org-id="${org.id}"
             aria-haspopup="dialog" aria-label="${escapeHtml(t('admins.revokeLabel', { name: user.name }))}">${escapeHtml(t('admins.revoke'))}</button>
         </td>
       </tr>`;
   }
 
-  function renderTable(org) {
-    const adminIds = orgAdminIds(org);
-    const admins = orgUsers(org).filter((user) => adminIds.has(user.id));
-    els.rows.innerHTML = admins.map(renderRow).join('');
-    els.empty.hidden = admins.length > 0;
+  function renderTable() {
+    const rows = scopedOrgs().flatMap((org) => {
+      const adminIds = orgAdminIds(org);
+      return orgUsers(org).filter((user) => adminIds.has(user.id)).map((user) => renderRow(org, user));
+    });
+    els.rows.innerHTML = rows.join('');
+    els.orgColumn.hidden = !isAllOrgs();
+    els.empty.hidden = rows.length > 0;
+    els.emptyText.textContent = t(isAllOrgs() ? 'admins.emptyAll' : 'admins.empty');
+    return rows.length;
+  }
+
+  function renderAdminsHeader(count) {
+    els.adminCount.textContent = count === 1 ? t('admins.countOne') : t('admins.count', { count });
+    // Adding an admin needs one organization to add them to; say so instead of just grey-ing the button.
+    const org = currentOrg();
+    els.addAdmin.disabled = org === null;
+    els.addAdmin.setAttribute('aria-label', org ? t('admins.addLabel', { org: orgName(org) }) : t('admins.add'));
+    els.addHint.hidden = org !== null;
+    els.addHint.textContent = org ? '' : t('admins.addPickOrg');
   }
 
   function render() {
     const allowed = isGlobalAdmin();
     els.noPermission.hidden = allowed;
-    els.admins.hidden = !allowed;
+    [els.pageHead, els.stats, els.quotas, els.admins].forEach((el) => {
+      el.hidden = !allowed;
+    });
     if (!allowed) {
       return;
     }
-    const org = currentOrg();
-    renderOrgHeading(org);
-    renderTable(org);
+    renderFilter();
+    renderStats();
+    renderQuotaTable();
+    renderAdminsHeader(renderTable());
+  }
+
+  /* ---------- Pro quota modal ---------- */
+
+  function pendingQuotaOrg() {
+    return view.pendingQuotaOrgId ? findOrg(view.pendingQuotaOrgId) : null;
+  }
+
+  function renderQuotaModal(org) {
+    els.quotaOrg.textContent = orgName(org);
+    els.quotaHint.textContent = t('adminQuota.inUse', { used: proUsed(org), max: QUOTA_MAX });
+    els.quotaInput.min = String(proUsed(org));
+  }
+
+  function openQuotaModal(orgId) {
+    const org = findOrg(orgId);
+    if (!org) {
+      console.error('[manage-admins] Organization not found for quota edit', orgId);
+      showToast(t('adminQuota.orgNotFound'), 'error');
+      return;
+    }
+    view.pendingQuotaOrgId = org.id;
+    renderQuotaModal(org);
+    els.quotaInput.value = String(proQuota(org));
+    openModal(QUOTA_MODAL_ID);
+    els.quotaInput.focus();
+    els.quotaInput.select();
+  }
+
+  function saveQuota() {
+    const org = pendingQuotaOrg();
+    if (!org) {
+      console.error('[manage-admins] Quota saved without a valid organization', view.pendingQuotaOrgId);
+      showToast(t('adminQuota.orgNotFound'), 'error');
+      closeModal(els.quotaModal);
+      return;
+    }
+    const entered = els.quotaInput.value.trim();
+    const quota = Number(entered);
+    const used = proUsed(org);
+    // Digits only: an empty field would otherwise read as 0. A quota below the licenses already
+    // handed out would leave the organization over its own limit.
+    if (!/^\d+$/.test(entered) || quota < used || quota > QUOTA_MAX) {
+      console.error('[manage-admins] Invalid Pro quota', els.quotaInput.value);
+      showToast(t('adminQuota.invalid', { used, max: QUOTA_MAX }), 'error');
+      return;
+    }
+    proQuotaByOrg.set(org.id, quota);
+    closeModal(els.quotaModal);
+    render();
+    showToast(t('adminQuota.saved', { org: orgName(org), count: quota }), 'success');
   }
 
   /* ---------- add admin modal ---------- */
 
   function renderCandidates() {
     const org = currentOrg();
+    if (!org) {
+      return;
+    }
     const adminIds = orgAdminIds(org);
     const query = view.candidateQuery.trim().toLowerCase();
     const candidates = orgUsers(org).filter((user) =>
@@ -122,6 +336,10 @@
   }
 
   function openAddModal() {
+    if (!currentOrg()) {
+      showToast(t('admins.addPickOrg'), 'error');
+      return;
+    }
     view.candidateQuery = '';
     els.candidateSearch.value = '';
     renderCandidates();
@@ -148,38 +366,46 @@
 
   /* ---------- revoke modal ---------- */
 
+  function pendingRevokeUser() {
+    const pending = view.pendingRevoke;
+    if (!pending) {
+      return null;
+    }
+    const org = findOrg(pending.orgId);
+    return org ? { org, user: findUser(org, pending.userId) } : null;
+  }
+
   function renderRevokeBody() {
-    const org = currentOrg();
-    const user = view.pendingRevokeId && findUser(org, view.pendingRevokeId);
-    if (user) {
-      els.revokeBody.textContent = t('admins.revokeBody', { name: user.name, org: orgName(org) });
+    const pending = pendingRevokeUser();
+    if (pending && pending.user) {
+      els.revokeBody.textContent = t('admins.revokeBody', { name: pending.user.name, org: orgName(pending.org) });
     }
   }
 
-  function openRevokeModal(userId) {
-    if (!findUser(currentOrg(), userId)) {
-      console.error('[manage-admins] User not found for revoke', userId);
+  function openRevokeModal(orgId, userId) {
+    const org = findOrg(orgId);
+    if (!findUser(org, userId)) {
+      console.error('[manage-admins] User not found for revoke', orgId, userId);
       showToast(t('admins.notFound'), 'error');
       return;
     }
-    view.pendingRevokeId = userId;
+    view.pendingRevoke = { orgId, userId };
     renderRevokeBody();
     openModal(REVOKE_MODAL_ID);
   }
 
   function confirmRevoke() {
-    const org = currentOrg();
-    const user = view.pendingRevokeId && findUser(org, view.pendingRevokeId);
-    if (!user) {
-      console.error('[manage-admins] Revoke confirmed without a valid user', view.pendingRevokeId);
+    const pending = pendingRevokeUser();
+    if (!pending || !pending.user) {
+      console.error('[manage-admins] Revoke confirmed without a valid user', view.pendingRevoke);
       showToast(t('admins.notFound'), 'error');
       closeModal(els.revokeModal);
       return;
     }
-    orgAdminIds(org).delete(user.id);
+    orgAdminIds(pending.org).delete(pending.user.id);
     closeModal(els.revokeModal);
     render();
-    showToast(t('admins.revoked', { name: user.name }), 'success');
+    showToast(t('admins.revoked', { name: pending.user.name }), 'success');
   }
 
   /* ---------- events ---------- */
@@ -188,6 +414,23 @@
     els.orgSelect.addEventListener('change', () => {
       view.orgId = els.orgSelect.value;
       render();
+    });
+
+    els.quotaRows.addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-edit-quota]');
+      if (button) {
+        openQuotaModal(button.dataset.orgId);
+      }
+    });
+
+    els.quotaSave.addEventListener('click', saveQuota);
+    els.quotaModal.addEventListener('close', () => {
+      const orgId = view.pendingQuotaOrgId;
+      view.pendingQuotaOrgId = null;
+      const rowButton = orgId && els.quotaRows.querySelector(`[data-edit-quota][data-org-id="${orgId}"]`);
+      if (rowButton) {
+        rowButton.focus();
+      }
     });
 
     els.addAdmin.addEventListener('click', openAddModal);
@@ -210,16 +453,16 @@
     els.rows.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-revoke-admin]');
       if (button) {
-        openRevokeModal(button.dataset.userId);
+        openRevokeModal(button.dataset.orgId, button.dataset.userId);
       }
     });
 
     els.confirmRevoke.addEventListener('click', confirmRevoke);
     els.revokeModal.addEventListener('close', () => {
-      const userId = view.pendingRevokeId;
-      view.pendingRevokeId = null;
+      const pending = view.pendingRevoke;
+      view.pendingRevoke = null;
       // Back to the row's Revoke button when cancelled; the Add admin button once the row is gone.
-      const rowButton = userId && els.rows.querySelector(`[data-revoke-admin][data-user-id="${userId}"]`);
+      const rowButton = pending && els.rows.querySelector(`[data-revoke-admin][data-user-id="${pending.userId}"]`);
       (rowButton || els.addAdmin).focus();
     });
 
@@ -228,11 +471,16 @@
       if (els.addModal.open) {
         renderCandidates();
       }
+      const quotaOrg = pendingQuotaOrg();
+      if (quotaOrg) {
+        renderQuotaModal(quotaOrg);
+      }
       renderRevokeBody();
     });
     document.addEventListener(EVENTS.ROLE, () => {
       closeModal(els.addModal);
       closeModal(els.revokeModal);
+      closeModal(els.quotaModal);
       render();
     });
   }
@@ -240,12 +488,25 @@
   document.addEventListener('DOMContentLoaded', () => {
     const selectors = {
       noPermission: '[data-no-permission]',
+      pageHead: '[data-page-head]',
+      stats: '[data-stats]',
+      statGrid: '[data-stat-grid]',
+      quotas: '[data-quotas]',
+      quotaRows: '[data-quota-rows]',
+      quotaModal: `#${QUOTA_MODAL_ID}`,
+      quotaOrg: '[data-quota-org]',
+      quotaInput: '[data-quota-input]',
+      quotaHint: '[data-quota-hint]',
+      quotaSave: '[data-quota-save]',
       admins: '[data-admins]',
       orgSelect: '[data-org-select]',
+      orgColumn: '[data-org-column]',
       adminCount: '[data-admin-count]',
       addAdmin: '[data-add-admin]',
+      addHint: '[data-add-hint]',
       rows: '[data-admin-rows]',
       empty: '[data-empty]',
+      emptyText: '[data-empty-text]',
       addModal: `#${ADD_MODAL_ID}`,
       addOrg: '[data-add-org]',
       candidateSearch: '[data-candidate-search]',

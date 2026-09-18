@@ -42,21 +42,34 @@ Opening `design/index.html` directly from disk also works.
   - The demo user starts as Pro, so return the license first. The profile page adds an
     **Org Pro quota (Available / Full)** pill next to the Demo view switcher to preview both states.
 - **Demo view switcher** (bottom-left, profile + manage pages): User / Admin / Global Admin.
-  - User: no Manage Users / Manage Admin links; both manage pages show a no-access notice.
+  - User: no Manage Users / Admin Console links; both manage pages show a no-access notice.
   - Admin: fixed to the signed-in user's organization (Anong Srisuk, Faculty of Engineering).
   - Global Admin: organization dropdown to switch between organizations.
-- **Manage Admin** (`manage-admins.html`, Global Admin only — Admin and User get the no-access notice):
-  under the "Organization Admin" heading, pick an organization to list its admins (name, email) with a **Revoke** button
-  (confirm modal). **Add admin** opens a modal listing that organization's non-admin users with search
-  and an **Assign** button per user. An organization may be left with no admins (empty state). Mock
-  admins: CMU 1, Office of the University 2, Medicine 1, Engineering 2 (incl. Anong Srisuk), Humanities 1.
+- **Admin Console** (`manage-admins.html`, Global Admin only — Admin and User get the no-access notice):
+  an **Organization** filter in the page header drives every panel below it and defaults to
+  **All organizations**.
+  - **Usage summary:** one tile per license, each with its coloured badge, how many are left, the scope
+    it counts (the filtered organization(s) for Pro, "Shared Pool" for Temp. Pro and Large Meeting,
+    which stay university-wide because the pool is lent across organizations), used/quota and a bar in
+    the license colour that turns red at 100%.
+  - **Pro License Quotas:** one row per organization in view, with used/quota, a progress bar and
+    **Edit** — a modal with a number input. A quota below the licenses already in use is rejected with an
+    error toast, as is anything that is not a whole number up to 999. Edits are in memory and page-local,
+    so the Manage Users page keeps the original mock numbers.
+  - **Organization Admin:** admins (name, email) with a **Revoke** button (confirm modal). With
+    "All organizations" the table gains an Organization column and **Add admin** is disabled, since adding
+    needs one organization. **Add admin** opens a modal listing that organization's non-admin users with
+    search and an **Assign** button per user. An organization may be left with no admins (empty state).
+    Mock admins: CMU 1, Office of the University 2, Medicine 1, Engineering 2 (incl. Anong Srisuk),
+    Humanities 1.
 - **License ownership:**
   - **Organizations:** CMU, Office of the University, Medicine, Engineering, Humanities. CMU is an
     organization like the others (own staff), but also holds licenses for everyone.
   - **Note:** every license held by CMU is a **Shared Pool** license, **except Pro**. CMU's Pro quota
     is its own, like any other organization's.
   - **Pro** — quota per organization (CMU 12, Office of the University 10, Medicine 20, Engineering 8,
-    Humanities 6). Managed by the organization's Admin and by Global Admin.
+    Humanities 6). Managed by the organization's Admin and by Global Admin; Global Admin can change the
+    quota itself in the Admin Console.
   - **Shared Pool (Temp. Pro / Large Meeting)** — quotas held by CMU (Temp. Pro 3, Large Meeting 2) and
     lent to users in any organization. Only Global Admin can assign or revoke them. Mock loans: Temp. Pro
     to one Office of the University user and one Engineering user (2/3); Large Meeting to Anong Srisuk (1/2).
@@ -144,7 +157,7 @@ assets/js/app.js           theme, language, role, dropdown, dialogs, toasts, ico
 assets/js/profile.js       profile license card, return license, OneDrive toggle
 assets/js/mock-data.js     mock orgs, users and admins shared by both manage pages
 assets/js/manage-users.js  quotas, search, license editing
-assets/js/manage-admins.js organization admins: list, assign, revoke
+assets/js/manage-admins.js Admin Console: org filter, usage summary, Pro quotas, admins
 assets/js/booking.js       booking calendar, Shared Pool daily capacity, my bookings, cancel
 ```
 

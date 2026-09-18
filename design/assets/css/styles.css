@@ -1967,9 +1967,16 @@ button {
 }
 
 /* ---------- manage admins ---------- */
-.org-heading h1.card-title {
+/* Admin Console: the admins card titles its own section, so it is an h2 with the card title size. */
+.org-heading .card-title {
   margin-bottom: 8px;
   font-size: var(--fs-md);
+}
+
+.org-hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
 }
 
 .users-table .col-action {
@@ -2033,41 +2040,153 @@ button {
   color: var(--text-muted);
 }
 
+/* ---------- Admin Console: page filter, stats, quota table ---------- */
+/* The Admin Console stacks full-width cards instead of using the manage grid. */
+.page > .card + .card {
+  margin-top: var(--space-lg);
+}
+
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-sm) var(--space-md);
+}
+
+.page-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.page-filter label {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.stat {
+  display: grid;
+  gap: 6px;
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--glass-inset);
+}
+
+.stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.stat-left {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.stat-value {
+  margin: 0;
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-medium);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-sub {
+  margin: 0;
+  font-size: var(--fs-2xs);
+  color: var(--text-subtle);
+}
+
+.stats-card {
+  padding: 18px 22px 22px;
+}
+
+/* Same shape as the users card: a padded title row, then a full-bleed table. */
+.quota-table-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.quota-table-card .card-title {
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.quota-table-card .table-scroll {
+  min-height: 0;
+  max-height: none;
+}
+
+.quota-field {
+  display: grid;
+  gap: 6px;
+}
+
+.quota-cell {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 320px;
+}
+
+.quota-cell .quota-numbers {
+  margin: 0;
+}
+
 /* ==========================================================================
    3. Booking Center
    ========================================================================== */
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-lg);
 }
 
 .page-header h1 {
   margin: 0;
   font-size: var(--fs-2xl);
-  font-weight: var(--fw-semibold);
+  font-weight: var(--fw-medium);
   line-height: var(--lh-heading);
 }
 
 .page-subtitle {
-  margin: 6px 0 0;
+  margin: var(--space-2xs) 0 0;
   color: var(--text-muted);
 }
 
 .booking-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(280px, 1fr);
-  gap: 24px;
+  gap: var(--space-lg);
   align-items: start;
 }
 
 .booking-card {
   display: grid;
-  gap: 28px;
-  padding: 28px;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
 }
 
 .booking-step {
   display: grid;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .booking-step-label {
@@ -2719,6 +2838,17 @@ button {
 
   .admins-table td:first-child {
     grid-column: auto;
+  }
+
+  /* "All organizations": the org name goes on its own line, Revoke stays beside the name. */
+  .admins-table td.col-action {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .admins-table td[data-label] {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .usage-table th,
