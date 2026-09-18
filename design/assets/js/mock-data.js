@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Mock organizations, users and admins shared by the Manage Users and Manage Admin pages.
+ * Mock organizations, users and admins shared by the Manage Users and Admin Console pages.
  * Loaded after app.js. Each page builds its own copy (in-memory, resets on reload).
  *
  * License ownership:

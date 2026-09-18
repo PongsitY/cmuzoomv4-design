@@ -15,7 +15,7 @@
     en: {
       'app.name': 'CMU ZOOM',
       'nav.primary': 'Primary',
-      'nav.terms': 'Zoom Pro Terms of Use',
+      'nav.terms': 'Terms of Use',
       'nav.guide': 'User Guide',
       'nav.home': 'Go to profile',
       'nav.booking': 'Booking Center',
@@ -27,7 +27,7 @@
       'menu.themeLight': 'Light theme',
       'menu.themeDark': 'Dark theme',
       'menu.manageUsers': 'Manage Users',
-      'menu.manageAdmins': 'Manage Admin',
+      'menu.manageAdmins': 'Admin Console',
       'menu.logout': 'Logout',
 
       'landing.welcome': 'Welcome to',
@@ -231,7 +231,7 @@
     th: {
       'app.name': 'CMU ZOOM',
       'nav.primary': 'เมนูหลัก',
-      'nav.terms': 'เงื่อนไขการใช้งาน Zoom Pro',
+      'nav.terms': 'เงื่อนไขการใช้งาน',
       'nav.guide': 'คู่มือการใช้งาน',
       'nav.home': 'ไปที่หน้าโปรไฟล์',
       'nav.booking': 'จองสิทธิ์ ZOOM',
@@ -243,7 +243,7 @@
       'menu.themeLight': 'ธีมสว่าง',
       'menu.themeDark': 'ธีมมืด',
       'menu.manageUsers': 'จัดการผู้ใช้งาน',
-      'menu.manageAdmins': 'จัดการผู้ดูแล',
+      'menu.manageAdmins': 'คอนโซลผู้ดูแล',
       'menu.logout': 'ออกจากระบบ',
 
       'landing.welcome': 'ยินดีต้อนรับสู่',

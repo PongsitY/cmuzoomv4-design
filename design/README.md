@@ -30,8 +30,8 @@ Opening `design/index.html` directly from disk also works.
   to the landing page (`data-login`), showing "Manage Your License" (→ profile) and "Go to ZOOM Booking
   Center" (→ booking) instead. Logout (in the account menu, `data-logout`) signs out and returns to the
   landing page. Persists in `localStorage` (`cmuzoom.auth`).
-- **Navbar links:** Manage Users (admins only), Manage Admin (Global Admin only), Booking Center, Zoom Pro
-  Terms of Use, User Guide; the current page's link is highlighted. At 1080px and below they collapse into
+- **Navbar links:** Admin Console (Global Admin only, opens `manage-admins.html`), Manage Users (admins
+  only), Booking Center, Terms of Use (opens the Zoom Pro Terms of Use modal), User Guide; the current page's link is highlighted. At 1080px and below they collapse into
   the top of the account menu.
 - **Account menu:** user name + Edit Profile, language (EN/TH), theme (light/dark), Logout.
 - **Profile license card:** Pro / Temp. Pro users see **Return license** (confirm modal). Basic users see
