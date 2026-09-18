@@ -110,7 +110,8 @@ in `styles.css`, with separate light and dark values.
 
 Panels (cards, account menu, modals, demo switcher) are frosted glass: translucent fill + `backdrop-filter`
 blur, a light edge and a top highlight. Tune via the `--glass-*` tokens; browsers without
-`backdrop-filter` fall back to solid panels.
+`backdrop-filter` fall back to solid panels. The navbar's blur sits on `.navbar::before`, not on `.navbar`
+itself, so the account menu inside it can blur the page behind (nested backdrop filters don't).
 
 ## Typography
 
@@ -118,18 +119,20 @@ blur, a light edge and a top highlight. Tune via the `--glass-*` tokens; browser
 `<head>` with weights 400/500/600/700 and italic 400; set via `--font-sans` in `styles.css`.
 Fallback: Segoe UI / Leelawadee UI / Tahoma. Requires internet access to load.
 
-Sizes, weights and line heights are tokens in `:root`:
+Sizes, weights, line heights and spacing are tokens in `:root`:
 
-- **Size** (15px base; body drops to 14px on phones): `--fs-2xs` 12 · `--fs-xs` 13 · `--fs-sm` 14 ·
-  `--fs-base` 15 · `--fs-md` 16 · `--fs-lg` 18 · `--fs-xl` 20 · `--fs-2xl` 24 · `--fs-3xl` 30 ·
-  `--fs-display` 40–56. Nothing goes below 12px except the phone calendar "Booked" label (11px).
+- **Size** (14px base, desktop and phone): `--fs-2xs` 12 · `--fs-xs` 12 · `--fs-sm` 13 ·
+  `--fs-base` 14 · `--fs-md` 15 · `--fs-lg` 16 · `--fs-xl` 18 · `--fs-2xl` 20 · `--fs-3xl` 26 ·
+  `--fs-display` 34–46. Nothing goes below 12px except the phone calendar "Booked" label (11px).
   Avatar initials scale with the avatar and don't use the tokens.
-- **Weight** (Kanit runs heavy, so the hierarchy is kept light): `--fw-bold` 700 for the landing title only,
-  `--fw-semibold` 600 for page, card and modal titles and key values, `--fw-medium` 500 for buttons,
-  labels, badges and table headers, `--fw-regular` 400 for body text.
+- **Weight** (Kanit runs heavy, so the hierarchy is kept light): `--fw-semibold` 600 for the landing title only,
+  `--fw-medium` 500 for page, card and modal titles and key values, `--fw-regular` 400 for buttons,
+  labels, badges, table headers and body text. `--fw-bold` 700 is defined but unused.
 - **Line height:** `--lh-tight` 1.2 (buttons, calendar days), `--lh-heading` 1.35, `--lh-body` 1.55.
 - Uppercase labels drop their letter-spacing when the page language is Thai (`:lang(th)`), so tone
   marks stay attached to their consonants.
+- **Spacing:** `--space-2xs` 4 · `--space-xs` 8 · `--space-sm` 12 · `--space-md` 16 · `--space-lg` 20 ·
+  `--space-xl` 24 · `--space-2xl` 32 · `--space-3xl` 48, used for page padding, section gaps and card padding.
 
 ## Structure
 
