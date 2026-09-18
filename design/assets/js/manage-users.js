@@ -269,8 +269,7 @@
   /* ---------- rendering: license modal ---------- */
 
   function quotaMeta(org, type) {
-    const params = { left: Math.max(remaining(org, type), 0), total: quotaTotal(org, type) };
-    return t(isCmuHeldType(type) ? 'licenseModal.cmuQuotaLeft' : 'licenseModal.quotaLeft', params);
+    return t('licenseModal.quotaLeft', { left: Math.max(remaining(org, type), 0), total: quotaTotal(org, type) });
   }
 
   function actionButton(type, action, disabled) {
@@ -302,7 +301,8 @@
           ${escapeHtml(t(lock))}
         </span>`;
     } else {
-      meta = isCurrent ? `${t('licenseModal.assigned')} · ${quotaMeta(org, type)}` : quotaMeta(org, type);
+      // Keep the row short: the highlighted row and its Revoke button already mark the current license.
+      meta = quotaMeta(org, type);
       if (!isCurrent && needsPaid) {
         meta = t('manage.requiresPaid');
       }

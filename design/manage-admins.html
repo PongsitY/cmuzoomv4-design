@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Manage Admin · CMU ZOOM</title>
+  <title>Admin Console · CMU ZOOM</title>
   <link rel="icon" type="image/png" href="../images/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,22 +23,22 @@
       </a>
 
       <nav class="nav-links" data-i18n-aria-label="nav.primary">
+        <a class="nav-link" href="manage-admins.html" aria-current="page" data-global-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span data-i18n="menu.manageAdmins">Admin Console</span>
+        </a>
         <a class="nav-link" href="manage-users.html" data-admin-only>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
           <span data-i18n="menu.manageUsers">Manage Users</span>
         </a>
-        <a class="nav-link" href="manage-admins.html" aria-current="page" data-global-only>
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
-          <span data-i18n="menu.manageAdmins">Manage Admin</span>
-        </a>
-        <button type="button" class="nav-link" data-modal-open="terms-modal">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
-          <span data-i18n="nav.terms">Zoom Pro Terms of Use</span>
-        </button>
         <a class="nav-link" href="booking.html">
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
           <span data-i18n="nav.booking">Booking Center</span>
         </a>
+        <button type="button" class="nav-link" data-modal-open="terms-modal">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
+          <span data-i18n="nav.terms">Terms of Use</span>
+        </button>
         <a class="nav-link" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
           <span data-i18n="nav.guide">User Guide</span>
@@ -61,22 +61,22 @@
           </div>
 
           <div class="menu-section menu-mobile-only">
+            <a class="menu-item" href="manage-admins.html" aria-current="page" data-global-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span data-i18n="menu.manageAdmins">Admin Console</span>
+            </a>
             <a class="menu-item" href="manage-users.html" data-admin-only>
               <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
               <span data-i18n="menu.manageUsers">Manage Users</span>
             </a>
-            <a class="menu-item" href="manage-admins.html" aria-current="page" data-global-only>
-              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-              <span data-i18n="menu.manageAdmins">Manage Admin</span>
-            </a>
-            <button type="button" class="menu-item" data-modal-open="terms-modal">
-              <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
-              <span data-i18n="nav.terms">Zoom Pro Terms of Use</span>
-            </button>
             <a class="menu-item" href="booking.html">
               <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
               <span data-i18n="nav.booking">Booking Center</span>
             </a>
+            <button type="button" class="menu-item" data-modal-open="terms-modal">
+              <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+              <span data-i18n="nav.terms">Terms of Use</span>
+            </button>
             <a class="menu-item" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
               <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
               <span data-i18n="nav.guide">User Guide</span>
@@ -113,7 +113,7 @@
     </div>
   </header>
 
-  <!-- ===== Manage Admin (Global Admin only) ===== -->
+  <!-- ===== Admin Console (Global Admin only) ===== -->
   <main class="page page-wide">
     <section class="card no-permission" data-no-permission hidden>
       <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg></span>
@@ -125,14 +125,47 @@
       </a>
     </section>
 
+    <!-- Organization filter for every panel below; "All organizations" is the default. -->
+    <div class="page-header page-header-row" data-page-head hidden>
+      <div>
+        <h1 data-i18n="admins.pageTitle">Admin Console</h1>
+        <p class="page-subtitle" data-i18n="admins.subtitle"></p>
+      </div>
+      <div class="page-filter">
+        <label for="org-select" data-i18n="manage.organization">Organization</label>
+        <select class="select org-select" id="org-select" data-org-select></select>
+      </div>
+    </div>
+
+    <section class="card stats-card" aria-labelledby="stats-title" data-stats hidden>
+      <h2 class="card-title" id="stats-title" data-i18n="stats.title">Usage summary</h2>
+      <div class="stat-grid" data-stat-grid></div>
+    </section>
+
+    <section class="card quota-table-card" aria-labelledby="quota-table-title" data-quotas hidden>
+      <h2 class="card-title" id="quota-table-title" data-i18n="adminQuota.title">Pro License Quotas</h2>
+      <div class="table-scroll">
+        <table class="users-table quota-table">
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="table.organization">Organization</th>
+              <th scope="col" data-i18n="adminQuota.colUsage">Pro licenses used</th>
+              <th scope="col" class="col-action"><span class="visually-hidden" data-i18n="adminQuota.colEdit">Edit quota</span></th>
+            </tr>
+          </thead>
+          <tbody data-quota-rows></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="card users-card" aria-labelledby="admins-heading" data-admins hidden>
       <div class="users-header">
         <div class="org-heading">
-          <h1 id="admins-heading" class="card-title" data-i18n="admins.heading">Organization Admin</h1>
-          <label class="visually-hidden" for="org-select" data-i18n="manage.organization">Organization</label>
-          <select class="select org-select" id="org-select" data-org-select></select>
+          <h2 id="admins-heading" class="card-title" data-i18n="admins.heading">Organization Admin</h2>
           <span class="org-count" data-admin-count></span>
         </div>
+        <!-- Shown instead of an unexplained disabled button while the filter is "All organizations". -->
+        <p class="org-hint" data-add-hint hidden></p>
         <button type="button" class="btn btn-primary" data-add-admin aria-haspopup="dialog">
           <svg class="icon" aria-hidden="true"><use href="#i-user-plus"></use></svg>
           <span data-i18n="admins.add">Add admin</span>
@@ -144,6 +177,8 @@
           <thead>
             <tr>
               <th scope="col" data-i18n="table.name">Name</th>
+              <!-- Only shown while the filter is "All organizations". -->
+              <th scope="col" data-i18n="table.organization" data-org-column hidden>Organization</th>
               <th scope="col" class="col-action" data-i18n="table.action">Permission</th>
             </tr>
           </thead>
@@ -151,7 +186,8 @@
         </table>
         <div class="empty-state" data-empty hidden>
           <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-          <p data-i18n="admins.empty">This organization has no admins yet.</p>
+          <!-- Wording depends on the filter, so manage-admins.js fills it instead of data-i18n. -->
+          <p data-empty-text>This organization has no admins yet.</p>
         </div>
       </div>
     </section>
@@ -186,6 +222,33 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-primary" data-modal-close data-i18n="terms.accept">I understand</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Pro quota modal: organization name, current use and the input are filled by manage-admins.js. -->
+  <dialog class="modal" id="quota-modal" aria-labelledby="quota-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></span>
+        <div class="modal-title-group">
+          <h2 id="quota-modal-title" data-i18n="adminQuota.modalTitle">Edit Pro quota</h2>
+          <p class="modal-subtitle" data-quota-org></p>
+        </div>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <label class="quota-field">
+          <span class="modal-section-title" data-i18n="adminQuota.field">Pro licenses</span>
+          <input type="number" class="input" data-quota-input inputmode="numeric" step="1" min="0" max="999">
+        </label>
+        <p class="modal-note" data-quota-hint></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-primary" data-quota-save data-i18n="adminQuota.save">Save</button>
       </div>
     </div>
   </dialog>

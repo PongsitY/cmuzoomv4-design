@@ -30,8 +30,8 @@ Opening `design/index.html` directly from disk also works.
   to the landing page (`data-login`), showing "Manage Your License" (→ profile) and "Go to ZOOM Booking
   Center" (→ booking) instead. Logout (in the account menu, `data-logout`) signs out and returns to the
   landing page. Persists in `localStorage` (`cmuzoom.auth`).
-- **Navbar links:** Manage Users (admins only), Manage Admin (Global Admin only), Booking Center, Zoom Pro
-  Terms of Use, User Guide; the current page's link is highlighted. At 1080px and below they collapse into
+- **Navbar links:** Admin Console (Global Admin only, opens `manage-admins.html`), Manage Users (admins
+  only), Booking Center, Terms of Use (opens the Zoom Pro Terms of Use modal), User Guide; the current page's link is highlighted. At 1080px and below they collapse into
   the top of the account menu.
 - **Account menu:** user name + Edit Profile, language (EN/TH), theme (light/dark), Logout.
 - **Profile license card:** Pro / Temp. Pro users see **Return license** (confirm modal). Basic users see
@@ -42,21 +42,34 @@ Opening `design/index.html` directly from disk also works.
   - The demo user starts as Pro, so return the license first. The profile page adds an
     **Org Pro quota (Available / Full)** pill next to the Demo view switcher to preview both states.
 - **Demo view switcher** (bottom-left, profile + manage pages): User / Admin / Global Admin.
-  - User: no Manage Users / Manage Admin links; both manage pages show a no-access notice.
+  - User: no Manage Users / Admin Console links; both manage pages show a no-access notice.
   - Admin: fixed to the signed-in user's organization (Anong Srisuk, Faculty of Engineering).
   - Global Admin: organization dropdown to switch between organizations.
-- **Manage Admin** (`manage-admins.html`, Global Admin only — Admin and User get the no-access notice):
-  under the "Organization Admin" heading, pick an organization to list its admins (name, email) with a **Revoke** button
-  (confirm modal). **Add admin** opens a modal listing that organization's non-admin users with search
-  and an **Assign** button per user. An organization may be left with no admins (empty state). Mock
-  admins: CMU 1, Office of the University 2, Medicine 1, Engineering 2 (incl. Anong Srisuk), Humanities 1.
+- **Admin Console** (`manage-admins.html`, Global Admin only — Admin and User get the no-access notice):
+  an **Organization** filter in the page header drives every panel below it and defaults to
+  **All organizations**.
+  - **Usage summary:** one tile per license, each with its coloured badge, how many are left, the scope
+    it counts (the filtered organization(s) for Pro, "Shared Pool" for Temp. Pro and Large Meeting,
+    which stay university-wide because the pool is lent across organizations), used/quota and a bar in
+    the license colour that turns red at 100%.
+  - **Pro License Quotas:** one row per organization in view, with used/quota, a progress bar and
+    **Edit** — a modal with a number input. A quota below the licenses already in use is rejected with an
+    error toast, as is anything that is not a whole number up to 999. Edits are in memory and page-local,
+    so the Manage Users page keeps the original mock numbers.
+  - **Organization Admin:** admins (name, email) with a **Revoke** button (confirm modal). With
+    "All organizations" the table gains an Organization column and **Add admin** is disabled, since adding
+    needs one organization. **Add admin** opens a modal listing that organization's non-admin users with
+    search and an **Assign** button per user. An organization may be left with no admins (empty state).
+    Mock admins: CMU 1, Office of the University 2, Medicine 1, Engineering 2 (incl. Anong Srisuk),
+    Humanities 1.
 - **License ownership:**
   - **Organizations:** CMU, Office of the University, Medicine, Engineering, Humanities. CMU is an
     organization like the others (own staff), but also holds licenses for everyone.
   - **Note:** every license held by CMU is a **Shared Pool** license, **except Pro**. CMU's Pro quota
     is its own, like any other organization's.
   - **Pro** — quota per organization (CMU 12, Office of the University 10, Medicine 20, Engineering 8,
-    Humanities 6). Managed by the organization's Admin and by Global Admin.
+    Humanities 6). Managed by the organization's Admin and by Global Admin; Global Admin can change the
+    quota itself in the Admin Console.
   - **Shared Pool (Temp. Pro / Large Meeting)** — quotas held by CMU (Temp. Pro 3, Large Meeting 2) and
     lent to users in any organization. Only Global Admin can assign or revoke them. Mock loans: Temp. Pro
     to one Office of the University user and one Engineering user (2/3); Large Meeting to Anong Srisuk (1/2).
@@ -70,6 +83,7 @@ Opening `design/index.html` directly from disk also works.
 - **License bubble → modal:** each row shows the license as a clickable bubble (Large Meeting as a
   second-line bubble). Clicking opens a modal with the user's meeting log for the last 30 days
   (date & time, duration, participants) and one row per license type with an Assign/Revoke button.
+  Each row's note is just the quota, e.g. "1 of 3 left"; the current license's row is highlighted.
   - Admin: Temp. Pro and Large Meeting rows are read-only ("Managed by Global Admin"). Admin also
     can't Assign Pro to a Temp. Pro user or Revoke Pro from a user with Large Meeting.
 - **License rules (mock):** Basic / Pro / Temp. Pro are exclusive (assigning one replaces the other);
@@ -110,7 +124,8 @@ in `styles.css`, with separate light and dark values.
 
 Panels (cards, account menu, modals, demo switcher) are frosted glass: translucent fill + `backdrop-filter`
 blur, a light edge and a top highlight. Tune via the `--glass-*` tokens; browsers without
-`backdrop-filter` fall back to solid panels.
+`backdrop-filter` fall back to solid panels. The navbar's blur sits on `.navbar::before`, not on `.navbar`
+itself, so the account menu inside it can blur the page behind (nested backdrop filters don't).
 
 ## Typography
 
@@ -118,18 +133,20 @@ blur, a light edge and a top highlight. Tune via the `--glass-*` tokens; browser
 `<head>` with weights 400/500/600/700 and italic 400; set via `--font-sans` in `styles.css`.
 Fallback: Segoe UI / Leelawadee UI / Tahoma. Requires internet access to load.
 
-Sizes, weights and line heights are tokens in `:root`:
+Sizes, weights, line heights and spacing are tokens in `:root`:
 
-- **Size** (15px base; body drops to 14px on phones): `--fs-2xs` 12 · `--fs-xs` 13 · `--fs-sm` 14 ·
-  `--fs-base` 15 · `--fs-md` 16 · `--fs-lg` 18 · `--fs-xl` 20 · `--fs-2xl` 24 · `--fs-3xl` 30 ·
-  `--fs-display` 40–56. Nothing goes below 12px except the phone calendar "Booked" label (11px).
+- **Size** (14px base, desktop and phone): `--fs-2xs` 12 · `--fs-xs` 12 · `--fs-sm` 13 ·
+  `--fs-base` 14 · `--fs-md` 15 · `--fs-lg` 16 · `--fs-xl` 18 · `--fs-2xl` 20 · `--fs-3xl` 26 ·
+  `--fs-display` 34–46. Nothing goes below 12px except the phone calendar "Booked" label (11px).
   Avatar initials scale with the avatar and don't use the tokens.
-- **Weight** (Kanit runs heavy, so the hierarchy is kept light): `--fw-bold` 700 for the landing title only,
-  `--fw-semibold` 600 for page, card and modal titles and key values, `--fw-medium` 500 for buttons,
-  labels, badges and table headers, `--fw-regular` 400 for body text.
+- **Weight** (Kanit runs heavy, so the hierarchy is kept light): `--fw-semibold` 600 for the landing title only,
+  `--fw-medium` 500 for page, card and modal titles and key values, `--fw-regular` 400 for buttons,
+  labels, badges, table headers and body text. `--fw-bold` 700 is defined but unused.
 - **Line height:** `--lh-tight` 1.2 (buttons, calendar days), `--lh-heading` 1.35, `--lh-body` 1.55.
 - Uppercase labels drop their letter-spacing when the page language is Thai (`:lang(th)`), so tone
   marks stay attached to their consonants.
+- **Spacing:** `--space-2xs` 4 · `--space-xs` 8 · `--space-sm` 12 · `--space-md` 16 · `--space-lg` 20 ·
+  `--space-xl` 24 · `--space-2xl` 32 · `--space-3xl` 48, used for page padding, section gaps and card padding.
 
 ## Structure
 
@@ -140,7 +157,7 @@ assets/js/app.js           theme, language, role, dropdown, dialogs, toasts, ico
 assets/js/profile.js       profile license card, return license, OneDrive toggle
 assets/js/mock-data.js     mock orgs, users and admins shared by both manage pages
 assets/js/manage-users.js  quotas, search, license editing
-assets/js/manage-admins.js organization admins: list, assign, revoke
+assets/js/manage-admins.js Admin Console: org filter, usage summary, Pro quotas, admins
 assets/js/booking.js       booking calendar, Shared Pool daily capacity, my bookings, cancel
 ```
 
