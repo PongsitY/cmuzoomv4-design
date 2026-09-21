@@ -23,17 +23,17 @@
       </a>
 
       <nav class="nav-links" data-i18n-aria-label="nav.primary">
-        <a class="nav-link" href="manage-admins.html" data-global-only>
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
-          <span data-i18n="menu.manageAdmins">Admin Console</span>
+        <a class="nav-link" href="booking.html">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+          <span data-i18n="nav.booking">Booking Center</span>
         </a>
         <a class="nav-link" href="manage-users.html" aria-current="page" data-admin-only>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
           <span data-i18n="menu.manageUsers">Manage Users</span>
         </a>
-        <a class="nav-link" href="booking.html">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-          <span data-i18n="nav.booking">Booking Center</span>
+        <a class="nav-link" href="manage-admins.html" data-global-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span data-i18n="menu.manageAdmins">Admin Console</span>
         </a>
         <button type="button" class="nav-link" data-modal-open="terms-modal">
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
@@ -48,6 +48,7 @@
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
           <span class="avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
@@ -61,17 +62,17 @@
           </div>
 
           <div class="menu-section menu-mobile-only">
-            <a class="menu-item" href="manage-admins.html" data-global-only>
-              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-              <span data-i18n="menu.manageAdmins">Admin Console</span>
+            <a class="menu-item" href="booking.html">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.booking">Booking Center</span>
             </a>
             <a class="menu-item" href="manage-users.html" aria-current="page" data-admin-only>
               <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
               <span data-i18n="menu.manageUsers">Manage Users</span>
             </a>
-            <a class="menu-item" href="booking.html">
-              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-              <span data-i18n="nav.booking">Booking Center</span>
+            <a class="menu-item" href="manage-admins.html" data-global-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span data-i18n="menu.manageAdmins">Admin Console</span>
             </a>
             <button type="button" class="menu-item" data-modal-open="terms-modal">
               <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
@@ -167,9 +168,16 @@
           <table class="users-table">
             <thead>
               <tr>
-                <th scope="col" data-i18n="table.name">Name</th>
-                <th scope="col" class="col-last-use" data-i18n="table.lastUse">Last Hosted</th>
-                <th scope="col" class="col-license" data-i18n="table.license">License</th>
+                <!-- Click a header to sort; manage-users.js keeps aria-sort and the icon in step. -->
+                <th scope="col" data-sort-header="name">
+                  <button type="button" class="sort-button" data-sort="name"><span data-i18n="table.name">Name</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                </th>
+                <th scope="col" class="col-last-use" data-sort-header="lastUse">
+                  <button type="button" class="sort-button" data-sort="lastUse"><span data-i18n="table.lastUse">Last Hosted</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                </th>
+                <th scope="col" class="col-license" data-sort-header="license">
+                  <button type="button" class="sort-button" data-sort="license"><span data-i18n="table.license">License</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                </th>
               </tr>
             </thead>
             <tbody data-user-rows></tbody>
@@ -276,6 +284,26 @@
           </div>
           <div class="usage-log" data-lm-usage></div>
         </section>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Assign/Revoke confirmation, opened on top of the license modal: text filled by manage-users.js. -->
+  <dialog class="modal" id="confirm-license-modal" aria-labelledby="confirm-license-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon" data-cl-icon><svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg></span>
+        <h2 id="confirm-license-title" data-cl-title></h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-body" data-cl-body></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn" data-cl-confirm></button>
       </div>
     </div>
   </dialog>

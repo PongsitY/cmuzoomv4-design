@@ -23,17 +23,17 @@
       </a>
 
       <nav class="nav-links" data-i18n-aria-label="nav.primary">
-        <a class="nav-link" href="manage-admins.html" aria-current="page" data-global-only>
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
-          <span data-i18n="menu.manageAdmins">Admin Console</span>
+        <a class="nav-link" href="booking.html">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+          <span data-i18n="nav.booking">Booking Center</span>
         </a>
         <a class="nav-link" href="manage-users.html" data-admin-only>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
           <span data-i18n="menu.manageUsers">Manage Users</span>
         </a>
-        <a class="nav-link" href="booking.html">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-          <span data-i18n="nav.booking">Booking Center</span>
+        <a class="nav-link" href="manage-admins.html" aria-current="page" data-global-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span data-i18n="menu.manageAdmins">Admin Console</span>
         </a>
         <button type="button" class="nav-link" data-modal-open="terms-modal">
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
@@ -48,6 +48,7 @@
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
           <span class="avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
@@ -61,17 +62,17 @@
           </div>
 
           <div class="menu-section menu-mobile-only">
-            <a class="menu-item" href="manage-admins.html" aria-current="page" data-global-only>
-              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-              <span data-i18n="menu.manageAdmins">Admin Console</span>
+            <a class="menu-item" href="booking.html">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.booking">Booking Center</span>
             </a>
             <a class="menu-item" href="manage-users.html" data-admin-only>
               <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
               <span data-i18n="menu.manageUsers">Manage Users</span>
             </a>
-            <a class="menu-item" href="booking.html">
-              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-              <span data-i18n="nav.booking">Booking Center</span>
+            <a class="menu-item" href="manage-admins.html" aria-current="page" data-global-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span data-i18n="menu.manageAdmins">Admin Console</span>
             </a>
             <button type="button" class="menu-item" data-modal-open="terms-modal">
               <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
@@ -125,25 +126,28 @@
       </a>
     </section>
 
-    <!-- Organization filter for every panel below; "All organizations" is the default. -->
-    <div class="page-header page-header-row" data-page-head hidden>
-      <div>
-        <h1 data-i18n="admins.pageTitle">Admin Console</h1>
-        <p class="page-subtitle" data-i18n="admins.subtitle"></p>
-      </div>
-      <div class="page-filter">
-        <label for="org-select" data-i18n="manage.organization">Organization</label>
-        <select class="select org-select" id="org-select" data-org-select></select>
-      </div>
+    <div class="page-header" data-page-head hidden>
+      <h1 data-i18n="admins.pageTitle">Admin Console</h1>
+      <p class="page-subtitle" data-i18n="admins.subtitle"></p>
     </div>
 
-    <section class="card stats-card" aria-labelledby="stats-title" data-stats hidden>
+    <!-- Two tabs; manage-admins.js shows one panel at a time. -->
+    <div class="tabs" role="tablist" data-i18n-aria-label="admins.tabs" data-tabs hidden>
+      <button type="button" class="tab" role="tab" id="tab-stats" aria-controls="panel-stats" data-tab="stats" data-i18n="admins.tabStats">Stats</button>
+      <button type="button" class="tab" role="tab" id="tab-admins" aria-controls="panel-admins" data-tab="admins" data-i18n="admins.tabAdmins">Admin Management</button>
+    </div>
+
+    <div class="tab-panel" role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" data-stats hidden>
+    <section class="card stats-card" aria-labelledby="stats-title">
       <h2 class="card-title" id="stats-title" data-i18n="stats.title">Usage summary</h2>
       <div class="stat-grid" data-stat-grid></div>
     </section>
 
-    <section class="card quota-table-card" aria-labelledby="quota-table-title" data-quotas hidden>
-      <h2 class="card-title" id="quota-table-title" data-i18n="adminQuota.title">Pro License Quotas</h2>
+    <section class="card quota-table-card" aria-labelledby="quota-table-title">
+      <div class="quota-table-head">
+        <h2 class="card-title" id="quota-table-title" data-i18n="adminQuota.title">Pro License Quotas</h2>
+        <span class="quota-total" data-quota-total></span>
+      </div>
       <div class="table-scroll">
         <table class="users-table quota-table">
           <thead>
@@ -158,14 +162,20 @@
       </div>
     </section>
 
-    <section class="card users-card" aria-labelledby="admins-heading" data-admins hidden>
+    </div>
+
+    <div class="tab-panel" role="tabpanel" id="panel-admins" aria-labelledby="tab-admins" data-admins hidden>
+    <section class="card users-card" aria-labelledby="admins-heading">
       <div class="users-header">
         <div class="org-heading">
           <h2 id="admins-heading" class="card-title" data-i18n="admins.heading">Organization Admin</h2>
           <span class="org-count" data-admin-count></span>
         </div>
-        <!-- Shown instead of an unexplained disabled button while the filter is "All organizations". -->
-        <p class="org-hint" data-add-hint hidden></p>
+        <!-- Organization filter for the admin list; defaults to the first organization. -->
+        <div class="page-filter">
+          <label for="org-select" data-i18n="manage.organization">Organization</label>
+          <select class="select org-select" id="org-select" data-org-select></select>
+        </div>
         <button type="button" class="btn btn-primary" data-add-admin aria-haspopup="dialog">
           <svg class="icon" aria-hidden="true"><use href="#i-user-plus"></use></svg>
           <span data-i18n="admins.add">Add admin</span>
@@ -177,8 +187,6 @@
           <thead>
             <tr>
               <th scope="col" data-i18n="table.name">Name</th>
-              <!-- Only shown while the filter is "All organizations". -->
-              <th scope="col" data-i18n="table.organization" data-org-column hidden>Organization</th>
               <th scope="col" class="col-action" data-i18n="table.action">Permission</th>
             </tr>
           </thead>
@@ -191,6 +199,7 @@
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <!-- ===== Modals ===== -->
