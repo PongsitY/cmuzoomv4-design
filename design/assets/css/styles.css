@@ -70,7 +70,6 @@
   --warning: #8a5800;
   --warning-soft: #fdf1d9;
 
-  --logo-chip: transparent;
   --focus-ring: 0 0 0 3px color-mix(in srgb, var(--primary) 35%, transparent);
 
   --radius-sm: 8px;
@@ -109,9 +108,9 @@
   --surface-2: #252131;
   --border: #322c40;
   --border-strong: #463d58;
-  --navbar-bg: #332d45;
-  --navbar-border: #463d58;
-  --navbar-hover: #40395a;
+  --navbar-bg: #3c3651;
+  --navbar-border: #4e4562;
+  --navbar-hover: #48415f;
   --glass-bg: rgba(36, 31, 50, 0.52);
   --glass-bg-strong: rgba(36, 31, 50, 0.78);
   --glass-inset: rgba(255, 255, 255, 0.04);
@@ -138,7 +137,6 @@
   --warning: #e9b54f;
   --warning-soft: #33291a;
 
-  --logo-chip: #ffffff;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.55);
@@ -388,19 +386,6 @@ button {
   box-shadow: var(--shadow-sm);
 }
 
-/* ---------- logos ---------- */
-.logo-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 0;
-  border-radius: var(--radius-sm);
-  background: var(--logo-chip);
-}
-
-:root[data-theme="dark"] .logo-chip {
-  padding: 4px 8px;
-}
-
 /* ---------- navbar ---------- */
 .navbar {
   position: sticky;
@@ -419,6 +404,13 @@ button {
   background: color-mix(in srgb, var(--navbar-bg) 94%, transparent);
   -webkit-backdrop-filter: saturate(1.4) blur(10px);
   backdrop-filter: saturate(1.4) blur(10px);
+}
+
+/* Dark theme: a lighter, more see-through bar with a stronger blur so the page shows softly through it. */
+:root[data-theme="dark"] .navbar::before {
+  background: color-mix(in srgb, var(--navbar-bg) 72%, transparent);
+  -webkit-backdrop-filter: saturate(1.6) blur(24px);
+  backdrop-filter: saturate(1.6) blur(24px);
 }
 
 .navbar-inner {
@@ -530,6 +522,15 @@ button {
   background: var(--navbar-hover);
 }
 
+.avatar-name {
+  max-width: 160px;
+  overflow: hidden;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .avatar-button[aria-expanded="true"] .icon {
   transform: rotate(180deg);
 }
@@ -635,12 +636,6 @@ button {
   display: none !important;
 }
 
-/* Landing page: shows the Login button when signed out, the two action buttons when signed in. */
-:root[data-auth="out"] [data-auth-show="in"],
-:root[data-auth="in"] [data-auth-show="out"] {
-  display: none !important;
-}
-
 @keyframes pop-in {
   from {
     opacity: 0;
@@ -683,7 +678,8 @@ button {
   color: var(--text-muted);
 }
 
-.badge-pro {
+.badge-pro,
+.badge-reservedPro {
   background: var(--primary-soft);
   color: var(--primary);
 }
@@ -1040,15 +1036,24 @@ button {
 }
 
 /* ---------- toast ---------- */
+/* Shown as a manual popover (see app.js raiseToasts) so it sits in the top layer, above modal dialogs.
+   The resets below undo the popover defaults; z-index is the fallback for older browsers. */
 .toast-region {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  inset: auto 16px 16px auto;
   z-index: 60;
   display: grid;
   gap: 8px;
   justify-items: end;
+  width: auto;
+  height: auto;
   max-width: calc(100vw - 32px);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
 }
 
 .toast {
@@ -1142,7 +1147,8 @@ button {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 24px var(--gutter);
+  gap: var(--space-2xl);
+  padding: var(--space-xl) var(--space-xl);
   background-color: var(--bg);
   background-image: var(--bg-gradient);
 }
@@ -1153,16 +1159,28 @@ button {
   gap: 8px;
 }
 
-.landing-content {
+.landing-main {
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: var(--space-2xl);
   width: 100%;
-  max-width: 420px;
-  margin: 0 auto;
-  padding-block: var(--space-2xl);
+  max-width: 480px;
+  margin: auto;
+}
+
+.landing-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2xl) var(--space-xl);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  box-shadow: var(--shadow), var(--glass-highlight);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   text-align: center;
 }
 
@@ -1170,8 +1188,16 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-md);
+  flex-wrap: nowrap;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+/* Widths follow each file's real ratio: CMU 1:1, TLIC 5:1, Zoom 4.3:1. The row stays on one line and
+   must fit the narrowest panel (about 440px at 1024px wide); the logos shrink if it ever runs out. */
+.logo-row img {
+  min-width: 0;
+  object-fit: contain;
 }
 
 .logo-row .logo-cmu {
@@ -1181,22 +1207,23 @@ button {
 
 .logo-row .logo-tlic {
   width: auto;
-  height: 46px;
+  height: 30px;
 }
 
 .logo-row .logo-zoom {
   width: auto;
-  height: 26px;
+  height: 30px;
 }
 
 .logo-divider {
+  flex: none;
   width: 1px;
   height: 40px;
   background: var(--border);
 }
 
 .landing-welcome {
-  margin: var(--space-2xl) 0 0;
+  margin: 0 0 var(--space-xs);
   font-size: var(--fs-lg);
   font-weight: var(--fw-regular);
   color: var(--text-muted);
@@ -1212,22 +1239,22 @@ button {
 }
 
 .landing-subtitle {
-  margin: var(--space-xs) 0 var(--space-xl);
+  margin: var(--space-sm) 0 var(--space-2xl);
   color: var(--text-muted);
 }
 
 .landing-actions {
   display: grid;
-  gap: 12px;
+  gap: var(--space-md);
   width: 100%;
 }
 
 .landing-actions .landing-note {
-  margin-top: 2px;
+  margin-top: var(--space-xs);
 }
 
 .landing-note {
-  margin: 14px 0 0;
+  margin: var(--space-md) 0 0;
   font-size: var(--fs-xs);
   color: var(--text-subtle);
 }
@@ -1255,6 +1282,22 @@ button {
 
 .page-wide {
   max-width: 1280px;
+}
+
+/* Profile: centre the cards vertically in the space below the navbar (short content only;
+   taller content simply scrolls). */
+body:has(.page-centered) {
+  display: flex;
+  flex-direction: column;
+}
+
+.page-centered {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  padding-block: var(--space-xl);
 }
 
 .profile-grid {
@@ -1699,6 +1742,52 @@ button {
   color: var(--text-muted);
 }
 
+/* Sortable column headers (Manage Users). */
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sort-button:hover {
+  color: var(--text);
+}
+
+.sort-button:focus-visible {
+  outline: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--focus-ring);
+}
+
+.sort-icon {
+  opacity: 0.45;
+}
+
+.sort-button:hover .sort-icon {
+  opacity: 0.8;
+}
+
+.users-table th[aria-sort] {
+  color: var(--text);
+}
+
+.users-table th[aria-sort] .sort-icon {
+  opacity: 1;
+  color: var(--primary);
+}
+
+.users-table th[aria-sort="ascending"] .sort-icon {
+  transform: rotate(180deg);
+}
+
 .users-table td {
   padding: 10px 22px;
   border-bottom: 1px solid var(--border);
@@ -1783,6 +1872,12 @@ button {
 .license-bubble:hover {
   border-color: currentColor;
   box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 16%, transparent);
+}
+
+/* Basic has no license to highlight, so its bubble carries no border (the transparent one keeps the size). */
+.license-bubble.badge-basic,
+.license-bubble.badge-basic:hover {
+  border-color: transparent;
 }
 
 .license-bubble .icon {
@@ -1883,6 +1978,25 @@ button {
   color: var(--text-muted);
 }
 
+/* Confirmation text with line breaks (set through textContent). */
+.confirm-body {
+  white-space: pre-line;
+}
+
+/* "Expires in ..." beside the license name and quota note. */
+.license-action-expiry {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.license-action-expiry.is-soon {
+  color: var(--warning);
+}
+
+.license-action-expiry.is-overdue {
+  color: var(--danger);
+}
+
 /* Read-only marker for CMU licenses when the viewer is not Global Admin. */
 .license-lock {
   display: inline-flex;
@@ -1973,12 +2087,6 @@ button {
   font-size: var(--fs-md);
 }
 
-.org-hint {
-  margin: 0;
-  font-size: var(--fs-xs);
-  color: var(--text-muted);
-}
-
 .users-table .col-action {
   width: 140px;
   text-align: right;
@@ -2042,8 +2150,45 @@ button {
 
 /* ---------- Admin Console: page filter, stats, quota table ---------- */
 /* The Admin Console stacks full-width cards instead of using the manage grid. */
-.page > .card + .card {
+.page > .card + .card,
+.tab-panel > .card + .card {
   margin-top: var(--space-lg);
+}
+
+/* Admin Console tabs: Stats / Admin Management. */
+.tabs {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  margin-bottom: -1px;
+  padding: 10px var(--space-md);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-base);
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  font-weight: var(--fw-medium);
+}
+
+.tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
 }
 
 .page-header-row {
@@ -2108,10 +2253,17 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.stat-sub {
-  margin: 0;
-  font-size: var(--fs-2xs);
-  color: var(--text-subtle);
+.stat-figures {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.stat-percent {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .stats-card {
@@ -2126,9 +2278,18 @@ button {
   overflow: hidden;
 }
 
-.quota-table-card .card-title {
+.quota-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
   padding: 18px 22px;
   border-bottom: 1px solid var(--border);
+}
+
+.quota-total {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 
 .quota-table-card .table-scroll {
@@ -2740,11 +2901,7 @@ button {
   }
 
   .landing-content {
-    padding-block: 16px 32px;
-  }
-
-  .landing-welcome {
-    margin-top: 32px;
+    padding: var(--space-2xl) var(--space-lg);
   }
 
   .page {
@@ -2934,25 +3091,33 @@ button {
 /* Compact logo row where the landing panel is narrow: tablet split view and small phones. */
 @media (min-width: 768px) and (max-width: 1023px), (max-width: 420px) {
   .logo-row {
-    flex-wrap: nowrap;
-    gap: 12px;
+    gap: 10px;
   }
 
   .logo-row .logo-cmu {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
   }
 
   .logo-row .logo-tlic {
-    height: 38px;
+    height: 23px;
   }
 
   .logo-row .logo-zoom {
-    height: 22px;
+    height: 23px;
+  }
+
+  .logo-divider {
+    height: 32px;
   }
 }
 
 @media (max-width: 420px) {
+  /* The name is dropped so the logo and account button fit on small phones. */
+  .avatar-name {
+    display: none;
+  }
+
   /* Only the 3-button role switcher needs to drop its label to fit. */
   .demo-role-switcher .demo-label {
     display: none;
@@ -2978,8 +3143,13 @@ button {
   .card,
   .menu,
   .modal,
-  .demo-switcher {
+  .demo-switcher,
+  .landing-content {
     background: var(--surface);
+  }
+
+  :root[data-theme="dark"] .navbar::before {
+    background: var(--navbar-bg);
   }
 
   .users-table th {

@@ -13,14 +13,32 @@
   const { LICENSES } = window.App;
 
   const ADDON_LARGE_MEETING = 'largeMeeting';
+  // Quota only (never held by a user directly): one Pro is reserved for each Large Meeting assigned.
+  const RESERVED_PRO = 'reservedPro';
   const CMU_ORG_ID = 'cmu';
   // The signed-in demo user (shown on profile.html) is an admin of the Faculty of Engineering.
   const SIGNED_IN_USER = Object.freeze({ name: 'Anong Srisuk', email: 'anong.s@cmu.ac.th', orgId: 'eng' });
   const USERS_PER_ORG = 15;
   const LAST_USE_WINDOW_DAYS = 45;
+  // How long ago a user's license row was created (mock USER_LICENSE.created_at), 1..N days.
+  const LICENSE_AGE_WINDOW_DAYS = 40;
   const DAY_MS = 24 * 60 * 60 * 1000;
   // Fixed "today" keeps the generated demo data stable between visits.
   const REFERENCE_DATE = new Date(2026, 8, 14);
+
+  // Fixed booking time slots (5:30 AM to 10:00 PM), shared by the Booking Center and by the expiry of
+  // Shared Pool licenses: Temp. Pro / Large Meeting expire at the next slot boundary after assignment.
+  const TIME_SLOTS = Object.freeze([
+    Object.freeze({ id: 'morning', startHour: 5, startMinute: 30, endHour: 11, endMinute: 0 }),
+    Object.freeze({ id: 'midday', startHour: 11, startMinute: 0, endHour: 16, endMinute: 30 }),
+    Object.freeze({ id: 'evening', startHour: 16, startMinute: 30, endHour: 22, endMinute: 0 })
+  ]);
+  const SLOT_BOUNDARIES = Object.freeze(
+    [...new Set(TIME_SLOTS.flatMap((slot) => [
+      slot.startHour * 60 + slot.startMinute,
+      slot.endHour * 60 + slot.endMinute
+    ]))].sort((a, b) => a - b)
+  );
 
   // Mock license distribution: every 2nd user gets Pro while the org quota allows.
   const PRO_EVERY = 2;
@@ -54,7 +72,12 @@
   // Each organization holds a Pro quota; CMU also holds the Temp. Pro / Large Meeting quotas for everyone.
   // `seed` keeps each organization's generated mock data stable regardless of list order.
   const ORGANIZATIONS = Object.freeze([
-    { id: CMU_ORG_ID, seed: 4, name: { en: 'CMU', th: 'CMU' }, quotas: { pro: 12, tempPro: 3, largeMeeting: 2 } },
+    {
+      id: CMU_ORG_ID,
+      seed: 4,
+      name: { en: 'CMU', th: 'CMU' },
+      quotas: { pro: 12, tempPro: 3, largeMeeting: 2, reservedPro: 2 }
+    },
     { id: 'ou', seed: 0, name: { en: 'Office of the University', th: 'สำนักงานมหาวิทยาลัย' }, quotas: { pro: 10 } },
     { id: 'med', seed: 1, name: { en: 'Faculty of Medicine', th: 'คณะแพทยศาสตร์' }, quotas: { pro: 20 }, expiryDays: 90 },
     { id: 'eng', seed: 2, name: { en: 'Faculty of Engineering', th: 'คณะวิศวกรรมศาสตร์' }, quotas: { pro: 8 } },
@@ -117,6 +140,35 @@
     return LICENSES.BASIC;
   }
 
+  /** The mock "now": the fixed demo date with the real time of day, so slot countdowns stay live. */
+  function mockNow() {
+    const real = new Date();
+    return new Date(
+      REFERENCE_DATE.getFullYear(), REFERENCE_DATE.getMonth(), REFERENCE_DATE.getDate(),
+      real.getHours(), real.getMinutes(), real.getSeconds()
+    );
+  }
+
+  /** The first time slot boundary strictly after `date` (the next day's first one after the last slot). */
+  function nextSlotBoundary(date) {
+    const minutes = date.getHours() * 60 + date.getMinutes() + date.getSeconds() / 60;
+    const boundary = SLOT_BOUNDARIES.find((value) => value > minutes);
+    const dayOffset = boundary === undefined ? 1 : 0;
+    const target = boundary === undefined ? SLOT_BOUNDARIES[0] : boundary;
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + dayOffset, 0, target);
+  }
+
+  /** Seeded loans were handed out when the current slot began, so they always run to its end. */
+  function seedAssignedAt() {
+    const now = mockNow();
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    const slot = TIME_SLOTS.find((item) => minutes >= item.startHour * 60 + item.startMinute && minutes < item.endHour * 60 + item.endMinute);
+    if (!slot) {
+      return now;
+    }
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), slot.startHour, slot.startMinute);
+  }
+
   function buildUsers(org) {
     const orgIndex = org.seed;
     let orgProAssigned = 0;
@@ -129,11 +181,13 @@
       if (license === LICENSES.PRO) {
         orgProAssigned += 1;
       }
-      // Large Meeting requires a paid license.
-      const largeMeeting = license !== LICENSES.BASIC && CMU_LOANS.largeMeeting.includes(userId);
+      // Large Meeting comes with its own reserved Pro, so any user can hold it.
+      const largeMeeting = CMU_LOANS.largeMeeting.includes(userId);
 
       const neverUsed = spread(orgIndex, i, 3, 6) === 5;
       const daysAgo = neverUsed ? null : spread(orgIndex, i, 13, LAST_USE_WINDOW_DAYS);
+      // The license is always older than the user's last use.
+      const licenseAgeDays = Math.max(1 + spread(orgIndex, i, 19, LICENSE_AGE_WINDOW_DAYS), (daysAgo ?? 0) + 1);
       const isSignedInUser = org.id === SIGNED_IN_USER.orgId && i === 0;
 
       return {
@@ -141,8 +195,15 @@
         name: isSignedInUser ? SIGNED_IN_USER.name : `${first} ${last}`,
         email: isSignedInUser ? SIGNED_IN_USER.email : `${first}.${last.charAt(0)}@cmu.ac.th`.toLowerCase(),
         lastUse: daysAgo === null ? null : new Date(REFERENCE_DATE.getTime() - daysAgo * DAY_MS),
+        // Mock USER_LICENSE.created_at: what the Pro expiration is counted from when the user never used it.
+        licenseCreatedAt: new Date(REFERENCE_DATE.getTime() - licenseAgeDays * DAY_MS),
         license,
         largeMeeting,
+        // When each Shared Pool license (tempPro / largeMeeting) was assigned; drives its expiry.
+        assignedAt: {
+          ...(license === LICENSES.TEMP_PRO ? { [LICENSES.TEMP_PRO]: seedAssignedAt() } : {}),
+          ...(largeMeeting ? { [ADDON_LARGE_MEETING]: seedAssignedAt() } : {})
+        },
         usageLog: buildUsageLog(orgIndex, i, daysAgo, license)
       };
     });
@@ -178,7 +239,12 @@
 
   window.MockData = Object.freeze({
     ADDON_LARGE_MEETING,
+    RESERVED_PRO,
     CMU_ORG_ID,
+    TODAY: REFERENCE_DATE,
+    TIME_SLOTS,
+    mockNow,
+    nextSlotBoundary,
     SIGNED_IN_USER,
     ORGANIZATIONS,
     createUsersByOrg,

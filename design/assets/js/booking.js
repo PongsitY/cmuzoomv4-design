@@ -28,12 +28,9 @@
   // Shared Pool daily capacity — mirrors CMU's tempPro/largeMeeting quotas in mock-data.js (ORGANIZATIONS).
   const DAILY_CAPACITY = Object.freeze({ [LICENSE_TEMP_PRO]: 3, [LICENSE_LARGE_MEETING]: 2 });
 
-  // Three fixed 5.5-hour slots covering the bookable day, 5:30 AM to 10:00 PM.
-  const TIME_SLOTS = Object.freeze([
-    Object.freeze({ id: 'morning', startHour: 5, startMinute: 30, endHour: 11, endMinute: 0 }),
-    Object.freeze({ id: 'midday', startHour: 11, startMinute: 0, endHour: 16, endMinute: 30 }),
-    Object.freeze({ id: 'evening', startHour: 16, startMinute: 30, endHour: 22, endMinute: 0 })
-  ]);
+  // Three fixed 5.5-hour slots covering the bookable day, 5:30 AM to 10:00 PM (defined in mock-data.js,
+  // where Manage Users also uses them to time the expiry of Temp. Pro / Large Meeting).
+  const { TIME_SLOTS } = window.MockData;
 
   const DAY_MS = 24 * 60 * 60 * 1000;
   const BOOKING_LEAD_DAYS = 1; // earliest bookable day is tomorrow

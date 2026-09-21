@@ -18,21 +18,21 @@ Opening `design/index.html` directly from disk also works.
 
 | File | Sketch screen | Notes |
 | --- | --- | --- |
-| `index.html` | 0. Landing Page | Photo + CMU/TLIC/Zoom logos. Signed out: "Login with CMU Account". Signed in: "Manage Your License" + "Go to ZOOM Booking Center" |
-| `profile.html` | 1. User Profile | Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card, meeting buttons |
-| `manage-users.html` | 2. Manage Users | Quota bars, Pro expiration interval, org name/selector, search, license dropdown + Large Meeting toggle |
+| `index.html` | 0. Landing Page | Photo + the CMU/TLIC/Zoom logos (no chip behind the TLIC logo) above a frosted-glass login card. "Login with CMU Account" goes straight to the profile page |
+| `profile.html` | 1. User Profile | Cards centred vertically below the navbar (`page-centered`). Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card, meeting buttons |
+| `manage-users.html` | 2. Manage Users | Quota bars, Pro expiration interval, org name/selector, search, sortable user table (Name / Last Hosted / License), license dropdown + Large Meeting toggle |
 | `manage-admins.html` | — (new) | Global Admin only: organization selector, the organization's admins (name, email + Revoke), Add admin modal |
 | `booking.html` | — (new) | Book Temp. Pro / Large Meeting for one day (of six months ahead) in one or more time slots; "My bookings" list with Cancel |
 
 ## Behaviour
 
-- **Login state:** the landing page's "Login with CMU Account" button signs the mock user in and returns
-  to the landing page (`data-login`), showing "Manage Your License" (→ profile) and "Go to ZOOM Booking
-  Center" (→ booking) instead. Logout (in the account menu, `data-logout`) signs out and returns to the
-  landing page. Persists in `localStorage` (`cmuzoom.auth`).
-- **Navbar links:** Admin Console (Global Admin only, opens `manage-admins.html`), Manage Users (admins
-  only), Booking Center, Terms of Use (opens the Zoom Pro Terms of Use modal), User Guide; the current page's link is highlighted. At 1080px and below they collapse into
+- **Login state:** the landing page's "Login with CMU Account" button signs the mock user in and
+  redirects to the profile page (`data-login`, `href="profile.html"`). Logout (in the account menu,
+  `data-logout`) signs out and returns to the landing page. Persists in `localStorage` (`cmuzoom.auth`).
+- **Navbar links:** Booking Center, Manage Users (admins only), Admin Console (Global Admin only, opens
+  `manage-admins.html`), Terms of Use (opens the Zoom Pro Terms of Use modal), User Guide; the current page's link is highlighted. At 1080px and below they collapse into
   the top of the account menu.
+- **Account button:** the navbar shows the user's name next to the avatar (hidden at 420px and below).
 - **Account menu:** user name + Edit Profile, language (EN/TH), theme (light/dark), Logout.
 - **Profile license card:** Pro / Temp. Pro users see **Return license** (confirm modal). Basic users see
   **Request Pro**:
@@ -46,19 +46,22 @@ Opening `design/index.html` directly from disk also works.
   - Admin: fixed to the signed-in user's organization (Anong Srisuk, Faculty of Engineering).
   - Global Admin: organization dropdown to switch between organizations.
 - **Admin Console** (`manage-admins.html`, Global Admin only — Admin and User get the no-access notice):
-  an **Organization** filter in the page header drives every panel below it and defaults to
-  **All organizations**.
+  two tabs split the page (arrow keys, Home and End move between them): **Stats** (Usage summary + Pro
+  License Quotas, the default; always university-wide) and **Admin Management** (Organization Admin, with
+  an **Organization** filter with one organization at a time, CMU first, no "All organizations"). The
+  selected tab is kept in memory only.
   - **Usage summary:** one tile per license, each with its coloured badge, how many are left, the scope
-    it counts (the filtered organization(s) for Pro, "Shared Pool" for Temp. Pro and Large Meeting,
-    which stay university-wide because the pool is lent across organizations), used/quota and a bar in
-    the license colour that turns red at 100%.
-  - **Pro License Quotas:** one row per organization in view, with used/quota, a progress bar and
+    it counts (all organizations for Pro, "Shared Pool" for Temp. Pro, Large Meeting and
+    Reserved Pro for Large Meeting,
+    which stay university-wide because the pool is lent across organizations), used/quota with the
+    percentage used on the same row at the right, and a bar in the license colour that turns red at 100%.
+  - **Pro License Quotas:** the card header shows the total Pro quota of all organizations on the right
+    ("56 licenses", updated after an edit); one row per organization, with used/quota, a progress bar and
     **Edit** — a modal with a number input. A quota below the licenses already in use is rejected with an
     error toast, as is anything that is not a whole number up to 999. Edits are in memory and page-local,
     so the Manage Users page keeps the original mock numbers.
-  - **Organization Admin:** admins (name, email) with a **Revoke** button (confirm modal). With
-    "All organizations" the table gains an Organization column and **Add admin** is disabled, since adding
-    needs one organization. **Add admin** opens a modal listing that organization's non-admin users with
+  - **Organization Admin:** the selected organization's admins (name, email) with a **Revoke** button
+    (confirm modal). **Add admin** opens a modal listing that organization's non-admin users with
     search and an **Assign** button per user. An organization may be left with no admins (empty state).
     Mock admins: CMU 1, Office of the University 2, Medicine 1, Engineering 2 (incl. Anong Srisuk),
     Humanities 1.
@@ -73,22 +76,44 @@ Opening `design/index.html` directly from disk also works.
   - **Shared Pool (Temp. Pro / Large Meeting)** — quotas held by CMU (Temp. Pro 3, Large Meeting 2) and
     lent to users in any organization. Only Global Admin can assign or revoke them. Mock loans: Temp. Pro
     to one Office of the University user and one Engineering user (2/3); Large Meeting to Anong Srisuk (1/2).
+  - **Reserved Pro for Large Meeting** — a quota of its own (2, `reservedPro` in `mock-data.js`), also held
+    by CMU. Only a Large Meeting user with no Pro / Temp. Pro of their own uses one (so it can go to a Basic
+    user); a user who already has Pro or Temp. Pro does not. Revoking that Pro / Temp. Pro from a Large Meeting
+    user needs a free one too. It is never assigned directly: it is shown as a bar in the Manage Users quota
+    panel and as a tile in the Admin Console. When it is used up, Large Meeting cannot be assigned to a Basic user.
 - **Quota panel:** Admin sees only the organization's Pro quota. Global Admin sees the selected
-  organization's Pro quota plus "Shared Pool" (Temp. Pro and Large Meeting, usage across all
-  organizations).
+  organization's Pro quota plus "Shared Pool" (Temp. Pro, Large Meeting and Reserved Pro for Large
+  Meeting, usage across all organizations).
 - **Pro Expiration Interval panel** (under the quota card): how many days a Pro license may go unused
   before it is returned to the organization's Pro quota. Set per organization — Admin edits their own
   organization, Global Admin edits the selected one. **Edit** opens a modal with presets 30 / 60 / 90 /
   180 days or Never. Mock defaults: 60 days (Medicine 90, Humanities 30).
+- **Sorting (Manage Users):** click a column header to sort ascending, click again for descending; the
+  header shows an arrow icon and sets `aria-sort`. Name sorts alphabetically in the current language, Last
+  Hosted by date (users who never hosted count as the oldest), License as Pro, Temp. Pro, Basic (Large
+  Meeting holders first within each). Ties fall back to the name. The order is kept while searching or
+  switching organization; the headers are hidden on phones (stacked rows), so sorting is not available there.
 - **License bubble → modal:** each row shows the license as a clickable bubble (Large Meeting as a
   second-line bubble). Clicking opens a modal with the user's meeting log for the last 30 days
   (date & time, duration, participants) and one row per license type with an Assign/Revoke button.
-  Each row's note is just the quota, e.g. "1 of 3 left"; the current license's row is highlighted.
-  - Admin: Temp. Pro and Large Meeting rows are read-only ("Managed by Global Admin"). Admin also
-    can't Assign Pro to a Temp. Pro user or Revoke Pro from a user with Large Meeting.
+  A row's note is just the quota, e.g. "1 of 3 left", shown only for licenses the user does not hold;
+  the current license's row is highlighted. A held license shows "Expires in N days" (no date) beside
+  its name instead. **Pro:** last use (or, if the user never used it, the license's creation date, mock `USER_LICENSE.created_at`
+  = `licenseCreatedAt`) + the organization's Pro expiration interval ("Never expires" for
+  0 days, orange within 7 days, red once expired), counted from the mock "today" (`MockData.TODAY`,
+  14 Sep 2026) so the demo stays stable. **Temp. Pro / Large Meeting:** they last until the next
+  Booking Center time slot boundary (5:30 AM, 11:00 AM, 4:30 PM, 10:00 PM) after Global Admin assigned
+  them, shown as "Expires in 2 h 15 min" (orange within an hour). The slots live in `MockData.TIME_SLOTS`,
+  shared with `booking.js`; the countdown uses the mock date with the real time of day. Seeded loans
+  count from the start of the current slot.
+  Assign and Revoke each open a confirmation modal on top of it (Revoke is red; assigning Temp. Pro / Large Meeting also states, on a new line, the time slot and
+  the time it expires); the change is applied only after confirming.
+  - Admin: the Temp. Pro and Large Meeting rows appear only when the user holds them, and are read-only
+    ("Managed by Global Admin"); Global Admin always sees all three rows. Admin can Assign Pro to a
+    Temp. Pro user: the Temp. Pro is released automatically (the confirmation says so) and goes back to the pool.
 - **License rules (mock):** Basic / Pro / Temp. Pro are exclusive (assigning one replaces the other);
-  Large Meeting requires Pro or Temp. Pro and is removed when that license is revoked. Assign buttons
-  are disabled when the quota is used up.
+  Large Meeting is independent of them (it uses a Reserved Pro, see above), so any user can hold it and
+  revoking Pro or Temp. Pro leaves it alone. Assign buttons are disabled when the quota is used up.
 - **ZOOM Booking Center** (`booking.html`): book Temp. Pro or Large Meeting for one day, in one or
   more time slots. A booking is always a single day; only one day can be picked at a time, but
   multiple time slots on it can be. Anyone can book either license; saving assigns it right away

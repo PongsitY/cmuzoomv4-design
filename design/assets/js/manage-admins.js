@@ -10,14 +10,12 @@
  */
 (function () {
   const { ROLES, LICENSES, EVENTS, t, showToast, getRole, openModal, closeModal } = window.App;
-  const { ADDON_LARGE_MEETING, CMU_ORG_ID, ORGANIZATIONS, createUsersByOrg, createAdminsByOrg, escapeHtml, initials, orgName } = window.MockData;
+  const { ADDON_LARGE_MEETING, RESERVED_PRO, CMU_ORG_ID, ORGANIZATIONS, createUsersByOrg, createAdminsByOrg, escapeHtml, initials, orgName } = window.MockData;
 
   const ADD_MODAL_ID = 'add-admin-modal';
   const REVOKE_MODAL_ID = 'revoke-admin-modal';
   const QUOTA_MODAL_ID = 'quota-modal';
 
-  // Filter value that means "every organization"; also the default view for Global Admin.
-  const ALL_ORGS = 'all';
   const QUOTA_MAX = 999;
   const PERCENT = 100;
 
@@ -30,8 +28,11 @@
   // ORGANIZATIONS list stays untouched, so other pages keep their own mock numbers.
   const proQuotaByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, org.quotas.pro]));
 
+  const TABS = Object.freeze({ STATS: 'stats', ADMINS: 'admins' });
+
   const view = {
-    orgId: ALL_ORGS,
+    tab: TABS.STATS,
+    orgId: ORGANIZATIONS[0].id,
     candidateQuery: '',
     pendingRevoke: null,
     pendingQuotaOrgId: null
@@ -41,19 +42,9 @@
 
   /* ---------- helpers ---------- */
 
-  function isAllOrgs() {
-    return view.orgId === ALL_ORGS;
-  }
-
-  /** The selected organization, or null while the filter is "All organizations". */
+  /** The organization picked in the Admin Management filter. */
   function currentOrg() {
-    return isAllOrgs() ? null : ORGANIZATIONS.find((org) => org.id === view.orgId) || null;
-  }
-
-  /** Organizations the panels currently cover: all of them, or just the selected one. */
-  function scopedOrgs() {
-    const org = currentOrg();
-    return org ? [org] : ORGANIZATIONS;
+    return ORGANIZATIONS.find((org) => org.id === view.orgId) || ORGANIZATIONS[0];
   }
 
   function isGlobalAdmin() {
@@ -81,6 +72,10 @@
   }
 
   function holdsLicense(user, type) {
+    if (type === RESERVED_PRO) {
+      // Only a Large Meeting user without Pro / Temp. Pro of their own needs a reserved Pro.
+      return user.largeMeeting && user.license === LICENSES.BASIC;
+    }
     return type === ADDON_LARGE_MEETING ? user.largeMeeting : user.license === type;
   }
 
@@ -110,10 +105,8 @@
   /* ---------- rendering: filter ---------- */
 
   function renderFilter() {
-    const options = [{ id: ALL_ORGS, label: t('admins.allOrgs') }]
-      .concat(ORGANIZATIONS.map((org) => ({ id: org.id, label: orgName(org) })));
-    els.orgSelect.innerHTML = options.map((option) =>
-      `<option value="${option.id}"${option.id === view.orgId ? ' selected' : ''}>${escapeHtml(option.label)}</option>`
+    els.orgSelect.innerHTML = ORGANIZATIONS.map((org) =>
+      `<option value="${org.id}"${org.id === view.orgId ? ' selected' : ''}>${escapeHtml(orgName(org))}</option>`
     ).join('');
   }
 
@@ -127,10 +120,10 @@
         total: CMU_ORG.quotas[type]
       };
     }
-    const orgs = scopedOrgs();
+    // The Stats tab always covers every organization; the organization filter only drives Admin Management.
     return {
-      used: orgs.reduce((sum, org) => sum + proUsed(org), 0),
-      total: orgs.reduce((sum, org) => sum + proQuota(org), 0)
+      used: ORGANIZATIONS.reduce((sum, org) => sum + proUsed(org), 0),
+      total: ORGANIZATIONS.reduce((sum, org) => sum + proQuota(org), 0)
     };
   }
 
@@ -139,8 +132,7 @@
     if (isPool) {
       return t('manage.quotaGroupCmu');
     }
-    const org = currentOrg();
-    return org ? orgName(org) : t('admins.allOrgs');
+    return t('admins.allOrgs');
   }
 
   /** One license per tile: its badge in the license colour, the count, a bar and the scope. */
@@ -156,11 +148,13 @@
           <span class="stat-left">${escapeHtml(t('manage.left', { count: Math.max(total - used, 0) }))}</span>
         </div>
         <p class="stat-label">${escapeHtml(label)}</p>
-        <p class="stat-value">${escapeHtml(t('stats.ofTotal', { used, total }))}</p>
+        <div class="stat-figures">
+          <p class="stat-value">${escapeHtml(t('stats.ofTotal', { used, total }))}</p>
+          <span class="stat-percent">${percent}%</span>
+        </div>
         <div class="progress" role="progressbar" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${used}">
           <div class="progress-bar${isFull ? ' is-full' : ''}" data-license="${type}" style="width:${Math.min(percent, PERCENT)}%"></div>
         </div>
-        <p class="stat-sub">${escapeHtml(t(isPool ? 'stats.percentUsedPool' : 'stats.percentUsed', { percent }))}</p>
       </div>`;
   }
 
@@ -168,7 +162,8 @@
     els.statGrid.innerHTML = [
       licenseStat(LICENSES.PRO, false),
       licenseStat(LICENSES.TEMP_PRO, true),
-      licenseStat(ADDON_LARGE_MEETING, true)
+      licenseStat(ADDON_LARGE_MEETING, true),
+      licenseStat(RESERVED_PRO, true)
     ].join('');
   }
 
@@ -202,19 +197,17 @@
   }
 
   function renderQuotaTable() {
-    els.quotaRows.innerHTML = scopedOrgs().map(renderQuotaRow).join('');
+    els.quotaRows.innerHTML = ORGANIZATIONS.map(renderQuotaRow).join('');
+    const total = ORGANIZATIONS.reduce((sum, org) => sum + proQuota(org), 0);
+    els.quotaTotal.textContent = t('adminQuota.total', { count: total });
   }
 
   /* ---------- rendering: admins table ---------- */
 
   function renderRow(org, user) {
-    const orgCell = isAllOrgs()
-      ? `<td data-label="${escapeHtml(t('table.organization'))}">${escapeHtml(orgName(org))}</td>`
-      : '';
     return `
       <tr>
         <td>${userCell(user)}</td>
-        ${orgCell}
         <td class="col-action">
           <button type="button" class="btn btn-sm btn-outline-danger" data-revoke-admin data-user-id="${user.id}" data-org-id="${org.id}"
             aria-haspopup="dialog" aria-label="${escapeHtml(t('admins.revokeLabel', { name: user.name }))}">${escapeHtml(t('admins.revoke'))}</button>
@@ -223,36 +216,51 @@
   }
 
   function renderTable() {
-    const rows = scopedOrgs().flatMap((org) => {
-      const adminIds = orgAdminIds(org);
-      return orgUsers(org).filter((user) => adminIds.has(user.id)).map((user) => renderRow(org, user));
-    });
+    const org = currentOrg();
+    const adminIds = orgAdminIds(org);
+    const rows = orgUsers(org).filter((user) => adminIds.has(user.id)).map((user) => renderRow(org, user));
     els.rows.innerHTML = rows.join('');
-    els.orgColumn.hidden = !isAllOrgs();
     els.empty.hidden = rows.length > 0;
-    els.emptyText.textContent = t(isAllOrgs() ? 'admins.emptyAll' : 'admins.empty');
+    els.emptyText.textContent = t('admins.empty');
     return rows.length;
   }
 
   function renderAdminsHeader(count) {
     els.adminCount.textContent = count === 1 ? t('admins.countOne') : t('admins.count', { count });
-    // Adding an admin needs one organization to add them to; say so instead of just grey-ing the button.
-    const org = currentOrg();
-    els.addAdmin.disabled = org === null;
-    els.addAdmin.setAttribute('aria-label', org ? t('admins.addLabel', { org: orgName(org) }) : t('admins.add'));
-    els.addHint.hidden = org !== null;
-    els.addHint.textContent = org ? '' : t('admins.addPickOrg');
+    els.addAdmin.setAttribute('aria-label', t('admins.addLabel', { org: orgName(currentOrg()) }));
+  }
+
+  function renderTabs() {
+    els.tabs.querySelectorAll('[data-tab]').forEach((tab) => {
+      const selected = tab.dataset.tab === view.tab;
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+    });
+  }
+
+  function selectTab(tab, focus) {
+    if (!Object.values(TABS).includes(tab)) {
+      console.error('[manage-admins] Unknown tab', tab);
+      return;
+    }
+    view.tab = tab;
+    render();
+    if (focus) {
+      els.tabs.querySelector(`[data-tab="${tab}"]`).focus();
+    }
   }
 
   function render() {
     const allowed = isGlobalAdmin();
     els.noPermission.hidden = allowed;
-    [els.pageHead, els.stats, els.quotas, els.admins].forEach((el) => {
-      el.hidden = !allowed;
-    });
+    els.pageHead.hidden = !allowed;
+    els.tabs.hidden = !allowed;
+    els.stats.hidden = !allowed || view.tab !== TABS.STATS;
+    els.admins.hidden = !allowed || view.tab !== TABS.ADMINS;
     if (!allowed) {
       return;
     }
+    renderTabs();
     renderFilter();
     renderStats();
     renderQuotaTable();
@@ -314,9 +322,6 @@
 
   function renderCandidates() {
     const org = currentOrg();
-    if (!org) {
-      return;
-    }
     const adminIds = orgAdminIds(org);
     const query = view.candidateQuery.trim().toLowerCase();
     const candidates = orgUsers(org).filter((user) =>
@@ -336,10 +341,6 @@
   }
 
   function openAddModal() {
-    if (!currentOrg()) {
-      showToast(t('admins.addPickOrg'), 'error');
-      return;
-    }
     view.candidateQuery = '';
     els.candidateSearch.value = '';
     renderCandidates();
@@ -411,6 +412,29 @@
   /* ---------- events ---------- */
 
   function bindEvents() {
+    els.tabs.addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-tab]');
+      if (tab) {
+        selectTab(tab.dataset.tab, false);
+      }
+    });
+
+    // Arrow keys / Home / End move between tabs, as in the WAI-ARIA tabs pattern.
+    els.tabs.addEventListener('keydown', (event) => {
+      const order = Object.values(TABS);
+      const index = order.indexOf(view.tab);
+      const next = {
+        ArrowRight: order[(index + 1) % order.length],
+        ArrowLeft: order[(index - 1 + order.length) % order.length],
+        Home: order[0],
+        End: order[order.length - 1]
+      }[event.key];
+      if (next) {
+        event.preventDefault();
+        selectTab(next, true);
+      }
+    });
+
     els.orgSelect.addEventListener('change', () => {
       view.orgId = els.orgSelect.value;
       render();
@@ -489,10 +513,11 @@
     const selectors = {
       noPermission: '[data-no-permission]',
       pageHead: '[data-page-head]',
+      tabs: '[data-tabs]',
       stats: '[data-stats]',
       statGrid: '[data-stat-grid]',
-      quotas: '[data-quotas]',
       quotaRows: '[data-quota-rows]',
+      quotaTotal: '[data-quota-total]',
       quotaModal: `#${QUOTA_MODAL_ID}`,
       quotaOrg: '[data-quota-org]',
       quotaInput: '[data-quota-input]',
@@ -500,10 +525,8 @@
       quotaSave: '[data-quota-save]',
       admins: '[data-admins]',
       orgSelect: '[data-org-select]',
-      orgColumn: '[data-org-column]',
       adminCount: '[data-admin-count]',
       addAdmin: '[data-add-admin]',
-      addHint: '[data-add-hint]',
       rows: '[data-admin-rows]',
       empty: '[data-empty]',
       emptyText: '[data-empty-text]',

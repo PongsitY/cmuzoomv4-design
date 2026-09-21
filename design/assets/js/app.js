@@ -55,6 +55,7 @@
     clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     pencil: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/>',
     shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+    'arrow-up-down': '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
     'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>'
   };
 
@@ -165,6 +166,16 @@
     }
   }
 
+  /** @param {Date} date Localized clock time, e.g. "11:00" (locale decides the exact format). */
+  function formatTime(date) {
+    try {
+      return new Intl.DateTimeFormat(DATE_LOCALES[state.lang], { hour: 'numeric', minute: '2-digit' }).format(date);
+    } catch (error) {
+      console.error('[app] Unable to format time', date, error);
+      return date.toISOString().slice(11, 16);
+    }
+  }
+
   /* ---------- dropdowns ---------- */
 
   function closeDropdown(dropdown) {
@@ -229,6 +240,7 @@
     }
     closeAllDropdowns(null);
     dialog.showModal();
+    raiseToasts();
   }
 
   function closeModal(dialog) {
@@ -270,9 +282,29 @@
       region.className = 'toast-region';
       region.setAttribute('role', 'status');
       region.setAttribute('aria-live', 'polite');
+      region.setAttribute('popover', 'manual');
       document.body.appendChild(region);
     }
     return region;
+  }
+
+  /**
+   * Modal dialogs live in the browser's top layer, which no z-index can beat. The toast region is a
+   * manual popover, and re-showing it moves it above whatever entered the top layer before it.
+   */
+  function raiseToasts() {
+    const region = document.querySelector('.toast-region');
+    if (!region || typeof region.showPopover !== 'function') {
+      return;
+    }
+    try {
+      if (region.matches(':popover-open')) {
+        region.hidePopover();
+      }
+      region.showPopover();
+    } catch (error) {
+      console.error('[app] Unable to raise the toast region', error);
+    }
   }
 
   /**
@@ -284,6 +316,7 @@
     toast.className = `toast toast-${tone}`;
     toast.textContent = message;
     toastRegion().appendChild(toast);
+    raiseToasts();
     window.setTimeout(() => toast.remove(), TOAST_DURATION_MS);
   }
 
@@ -363,7 +396,7 @@
       }
       const loginButton = event.target.closest('[data-login]');
       if (loginButton) {
-        event.preventDefault();
+        // The link's href (profile.html) performs the redirect once the mock session is stored.
         setSignedIn(true);
         return;
       }
@@ -402,6 +435,7 @@
     setSignedIn,
     formatDate,
     formatDateTime,
+    formatTime,
     mountDemoControl,
     openModal,
     closeModal,
