@@ -53,9 +53,10 @@
 
         <div class="menu" id="user-menu" data-dropdown-menu hidden>
           <div class="menu-header">
-            <span class="avatar avatar-md" aria-hidden="true">AS</span>
+            <span class="avatar avatar-lg" aria-hidden="true">AS</span>
             <div>
               <strong>Anong Srisuk</strong>
+              <p class="menu-email">anong.s@cmu.ac.th</p>
               <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
             </div>
           </div>
@@ -117,33 +118,33 @@
   <main class="page page-centered">
     <div class="profile-grid">
       <section class="card profile-card" aria-labelledby="profile-name">
-        <span class="avatar avatar-xl" aria-hidden="true">AS</span>
-        <h1 class="profile-name" id="profile-name">Anong Srisuk</h1>
-        <p class="profile-email">anong.s@cmu.ac.th</p>
-        <p class="profile-org">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-building"></use></svg>
-          <span data-i18n="profile.mockOrg">Faculty of Engineering</span>
-        </p>
-
-        <div class="license-box">
-          <p class="license-caption" data-i18n="profile.license">Your Zoom license</p>
-          <p class="license-name" data-license-name>Pro User</p>
-          <div class="license-badges" data-license-badges></div>
-          <p class="license-expiry" data-license-expiry hidden></p>
+        <div class="profile-identity">
+          <span class="avatar avatar-xl" aria-hidden="true">AS</span>
+          <!-- One block, so the column's space-around cannot open a gap between name and email. -->
+          <div class="profile-nameplate">
+            <h1 class="profile-name" id="profile-name">Anong Srisuk</h1>
+            <p class="profile-email">anong.s@cmu.ac.th</p>
+          </div>
+          <p class="profile-org">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-building"></use></svg>
+            <span data-i18n="profile.mockOrg">Faculty of Engineering</span>
+          </p>
         </div>
 
-        <button type="button" class="btn btn-outline-danger btn-block profile-license-action" data-modal-open="return-modal" data-return-button>
-          <svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg>
-          <span data-i18n="profile.return">Return license</span>
-        </button>
+        <div class="profile-license">
+          <!-- One .license-box per held license, built by profile.js. -->
+          <div class="license-list" data-license-list></div>
 
-        <!-- Basic users only: get Pro from the organization's quota (disabled when the quota is full). -->
-        <button type="button" class="btn btn-primary btn-block profile-license-action" data-modal-open="request-modal" data-request-button aria-describedby="request-hint" hidden>
-          <svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
-          <span data-i18n="profile.request">Request Pro</span>
-        </button>
-        <p class="request-hint" id="request-hint" data-request-hint hidden data-i18n="profile.requestUnavailable"></p>
+          <!-- Basic users only: get Pro from the organization's quota (disabled when the quota is full).
+               profile.js moves these two into the license card itself when the user is Basic. -->
+          <button type="button" class="btn btn-primary btn-block profile-license-action" data-modal-open="request-modal" data-request-button aria-describedby="request-hint" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
+            <span data-i18n="profile.request">Request Pro</span>
+          </button>
+          <p class="request-hint" id="request-hint" data-request-hint hidden data-i18n="profile.requestUnavailable"></p>
+        </div>
 
+        <!-- Spans both columns: an account-wide setting, not something tied to one license. -->
         <div class="recording-setting">
           <span class="switch">
             <input type="checkbox" id="recording-toggle" checked data-recording-toggle>
@@ -201,10 +202,12 @@
         </button>
       </div>
       <div class="modal-body">
-        <!-- Content from "เงื่อนไขการใช้ ZOOM Pro.txt"; text lives in i18n.js (terms.*). -->
+        <!-- Content from "เงื่อนไขการใช้ ZOOM Pro.txt" plus the Pro expiration interval (terms.3 /
+             terms.note3, not in that file); text lives in i18n.js (terms.*). -->
         <ol class="terms-list">
           <li data-i18n="terms.1"></li>
           <li data-i18n="terms.2"></li>
+          <li data-i18n="terms.3"></li>
         </ol>
         <div class="terms-notes">
           <p class="terms-notes-title" data-i18n="terms.notesTitle">Notes</p>
@@ -214,6 +217,7 @@
               <a href="https://line.me/R/ti/p/@tliccmu" target="_blank" rel="noopener">@tliccmu</a>
             </li>
             <li data-i18n="terms.note2"></li>
+            <li data-i18n="terms.note3"></li>
           </ul>
         </div>
       </div>
@@ -227,13 +231,14 @@
     <div class="modal-panel">
       <div class="modal-header">
         <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-undo"></use></svg></span>
-        <h2 id="return-title" data-i18n="return.title">Return your license?</h2>
+        <!-- Title and body name the license being returned, so profile.js fills them. -->
+        <h2 id="return-title" data-return-title>Return your license?</h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
       </div>
       <div class="modal-body">
-        <p data-i18n="return.body"></p>
+        <p data-return-body></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>

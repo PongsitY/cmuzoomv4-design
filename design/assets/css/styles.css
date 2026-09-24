@@ -8,6 +8,7 @@
   --font-sans: "Kanit", "Segoe UI", "Leelawadee UI", Tahoma, system-ui, sans-serif;
 
   /* Type scale (14px base). Kanit runs heavy, so: 600 display, 500 titles, 400 controls/labels/body. */
+  --fs-3xs: 11px;
   --fs-2xs: 12px;
   --fs-xs: 12px;
   --fs-sm: 13px;
@@ -492,11 +493,18 @@ button {
   font-size: 14px;
 }
 
+/* Account menu header only; the navbar button keeps .avatar-sm. */
+.avatar-lg {
+  width: 56px;
+  height: 56px;
+  font-size: 18px;
+}
+
 .avatar-xl {
-  width: 112px;
-  height: 112px;
-  font-size: 34px;
-  box-shadow: 0 0 0 6px var(--primary-soft);
+  width: 140px;
+  height: 140px;
+  font-size: 42px;
+  box-shadow: 0 0 0 8px var(--primary-soft);
 }
 
 .dropdown {
@@ -567,6 +575,13 @@ button {
   font-size: var(--fs-base);
   font-weight: var(--fw-medium);
   line-height: var(--lh-heading);
+}
+
+.menu-email {
+  margin: 2px 0 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  word-break: break-all;
 }
 
 .menu-header a {
@@ -1302,22 +1317,46 @@ body:has(.page-centered) {
 
 .profile-grid {
   display: grid;
-  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
   gap: var(--space-lg);
   align-items: stretch;
 }
 
+/* Identity beside the license controls. auto-fit stacks them whenever the card is too narrow for two
+   columns, which a viewport breakpoint could not do: the card's width comes from its grid track, so
+   it is full-page below 860px but much narrower between 861px and ~1023px. */
 .profile-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  /* The content row absorbs the slack the taller Zoom panel adds, so both columns have room to
+     spread; the recording footer keeps its own height at the bottom. */
+  grid-template-rows: minmax(min-content, 1fr) auto;
+  gap: var(--space-xl);
   padding: 28px var(--space-xl) var(--space-xl);
   text-align: center;
 }
 
+.profile-identity,
+.profile-license {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Spread avatar, name, email and organization down the column instead of bunching them at the top
+   beside the taller license list. */
+.profile-identity {
+  justify-content: space-around;
+}
+
+
+.profile-nameplate {
+  margin-top: var(--space-md);
+}
+
 .profile-name {
-  margin: var(--space-md) 0 var(--space-2xs);
-  font-size: var(--fs-xl);
+  margin: 0;
+  font-size: var(--fs-3xl);
   font-weight: var(--fw-medium);
   line-height: var(--lh-heading);
 }
@@ -1341,12 +1380,36 @@ body:has(.page-centered) {
   color: var(--text-muted);
 }
 
+/* One card per held license: the Zoom license itself, then any add-on. Grows to fill the column and
+   spreads the cards down it, matching the identity block's distribution. */
+.license-list {
+  display: grid;
+  gap: var(--space-sm);
+  align-content: space-around;
+  flex-grow: 1;
+  width: 100%;
+}
+
 .license-box {
   width: 100%;
-  margin-top: var(--space-xl);
   padding: var(--space-lg) var(--space-md);
   border-radius: var(--radius);
   background: linear-gradient(160deg, var(--primary-soft), var(--surface-2));
+}
+
+/* With nothing to share the column, a single card fills it and spreads its own contents instead of
+   floating as a small block in empty space. Two or more cards keep their natural height and are
+   spread apart by the list's align-content above. */
+.license-list:has(.license-box:only-child) {
+  align-content: stretch;
+}
+
+.license-box:only-child {
+  display: flex;
+  flex-direction: column;
+  /* centre, so the name bubble keeps its pill width instead of stretching across the card */
+  align-items: center;
+  justify-content: space-around;
 }
 
 .license-caption {
@@ -1355,30 +1418,51 @@ body:has(.page-centered) {
   color: var(--text-muted);
 }
 
+/* Same colour-per-license bubble as the Manage Users rows; .badge-{license} supplies the colours. */
 .license-name {
-  margin: 6px 0 12px;
-  font-size: var(--fs-3xl);
+  display: inline-flex;
+  align-items: center;
+  margin: 10px 0 0;
+  padding: 10px 28px;
+  /* Same tinted outline as .license-bubble: badge-pro's fill matches the card's gradient, so the
+     bubble needs an edge to stay legible. */
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 999px;
+  font-size: var(--fs-2xl);
   font-weight: var(--fw-medium);
-  line-height: 1.2;
-  color: var(--text);
+  line-height: 1.3;
 }
 
-.license-badges {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px;
+/* Expiry sits directly on the divider above the Return link, the two kept as one block. */
+.license-footer {
+  width: 100%;
+  margin-top: var(--space-md);
 }
 
+/* Matches .license-return's padding-top, so the divider sits evenly between the two. */
 .license-expiry {
-  margin: 8px 0 0;
-  font-size: var(--fs-xs);
-  color: var(--warning);
+  margin: 0 0 var(--space-sm);
+  font-size: var(--fs-3xs);
+  color: var(--text-muted);
 }
 
-/* Return / Request Pro button under the license box */
+/* Sits inside its own license card, under a divider, so it returns just that license.
+   Overrides .link-button's padding/border/colour, including on hover (same specificity, declared later). */
+.license-return {
+  width: 100%;
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+
+.license-return:hover {
+  color: color-mix(in srgb, var(--danger) 80%, var(--text));
+}
+
+/* Request Pro, inside the license card it refers to. */
 .profile-license-action {
-  margin-top: 24px;
+  margin-top: var(--space-md);
 }
 
 .request-hint {
@@ -1388,12 +1472,13 @@ body:has(.page-centered) {
 }
 
 
+/* Full-width footer row of the profile card; the grid gap supplies the space above the divider. */
 .recording-setting {
   display: flex;
   align-items: center;
   gap: 10px;
+  grid-column: 1 / -1;
   width: 100%;
-  margin-top: 28px;
   padding-top: 24px;
   border-top: 1px solid var(--border);
   text-align: left;
@@ -1409,27 +1494,28 @@ body:has(.page-centered) {
 .meeting-card {
   display: flex;
   flex-direction: column;
-  /* Center the logos + actions vertically so they balance the taller profile card. */
+  /* Center the logos + actions vertically so they balance the profile card beside them. */
   justify-content: center;
   padding: 28px var(--space-xl);
 }
 
+/* Sized to sit comfortably inside the 380px column: 80 + 24 + 168 = 272px of 332px available. */
 .meeting-logos {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 32px;
+  gap: 24px;
   padding: 0 0 36px;
   border-bottom: 1px solid var(--border);
 }
 
 .meeting-logos .logo-cmu {
-  width: 96px;
-  height: 96px;
+  width: 80px;
+  height: 80px;
 }
 
 .meeting-logos .logo-zoom {
-  width: 200px;
+  width: 168px;
   height: auto;
 }
 
@@ -1449,7 +1535,7 @@ body:has(.page-centered) {
   text-align: left;
 }
 
-.meeting-actions .btn .icon:last-child {
+.meeting-actions .btn > .icon:last-child {
   margin-left: auto;
   opacity: 0.7;
 }
@@ -2609,11 +2695,6 @@ body:has(.page-centered) {
 
 .required-mark {
   color: var(--danger);
-}
-
-.optional-mark {
-  font-weight: var(--fw-regular);
-  color: var(--text-subtle);
 }
 
 .choice-group {

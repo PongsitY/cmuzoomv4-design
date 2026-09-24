@@ -19,7 +19,7 @@ Opening `design/index.html` directly from disk also works.
 | File | Sketch screen | Notes |
 | --- | --- | --- |
 | `index.html` | 0. Landing Page | Photo + the CMU/TLIC/Zoom logos (no chip behind the TLIC logo) above a frosted-glass login card. "Login with CMU Account" goes straight to the profile page |
-| `profile.html` | 1. User Profile | Cards centred vertically below the navbar (`page-centered`). Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card, meeting buttons |
+| `profile.html` | 1. User Profile | Cards centred vertically below the navbar (`page-centered`). Navbar (Zoom Pro terms modal, Booking Center link, user guide link, account menu), license card (identity beside the license controls, taking the wider column), meeting buttons |
 | `manage-users.html` | 2. Manage Users | Quota bars, Pro expiration interval, org name/selector, search, sortable user table (Name / Last Hosted / License), license dropdown + Large Meeting toggle |
 | `manage-admins.html` | — (new) | Global Admin only: organization selector, the organization's admins (name, email + Revoke), Add admin modal |
 | `booking.html` | — (new) | Book Temp. Pro / Large Meeting for one day (of six months ahead) in one or more time slots; "My bookings" list with Cancel |
@@ -33,14 +33,27 @@ Opening `design/index.html` directly from disk also works.
   `manage-admins.html`), Terms of Use (opens the Zoom Pro Terms of Use modal), User Guide; the current page's link is highlighted. At 1080px and below they collapse into
   the top of the account menu.
 - **Account button:** the navbar shows the user's name next to the avatar (hidden at 420px and below).
-- **Account menu:** user name + Edit Profile, language (EN/TH), theme (light/dark), Logout.
-- **Profile license card:** Pro / Temp. Pro users see **Return license** (confirm modal). Basic users see
-  **Request Pro**:
+- **Account menu:** avatar (`avatar-lg`, larger than the navbar's `avatar-sm`) + user name + email +
+  Edit Profile, language (EN/TH), theme (light/dark), Logout.
+- **Profile license card:** identity (avatar, name, email, organization pill) beside the license column,
+  the two vertically centred against each other. Each held license carries its own **Return license**
+  button, so the confirm modal names that license and returns only it — returning Pro leaves Large
+  Meeting in place, since the add-on carries its own reserved Pro. The **Save Cloud Recording to your
+  OneDrive** toggle is a full-width footer row spanning both columns, since it is an account-wide
+  setting rather than one attached to a license. Basic users see **Request Pro**:
   - Organization Pro quota available → opens a confirm modal (with a link to the Zoom Pro Terms of Use);
     confirming assigns Pro immediately, no admin approval.
   - Quota full → the button is disabled with the note "No Pro licenses left in your organization's quota."
   - The demo user starts as Pro, so return the license first. The profile page adds an
     **Org Pro quota (Available / Full)** pill next to the Demo view switcher to preview both states.
+  - Every held license gets its own card, built by `profile.js` into `[data-license-list]`: the Zoom
+    license ("Your Zoom license") and then any add-on ("Add-on"), so a user holding more than one sees
+    them listed separately instead of a name plus a badge. Each card carries its own expiry — Temp. Pro
+    as "Expires {date}", Pro as "Expires {date} if unused", Large Meeting as a slot countdown reusing
+    the `licenseModal.expiresInHm` wording. Manage Users shows the same Pro rule as a relative
+    "Expires in N days": the profile answers "when does mine lapse", the admin table "how urgent is this
+    row". The mock values (18 Oct 2026, 2 h 15 min) come from constants in `profile.js` mirroring the
+    signed-in user's row; `profile.html` does not load `mock-data.js`.
 - **Demo view switcher** (bottom-left, profile + manage pages): User / Admin / Global Admin.
   - User: no Manage Users / Admin Console links; both manage pages show a no-access notice.
   - Admin: fixed to the signed-in user's organization (Anong Srisuk, Faculty of Engineering).
@@ -87,7 +100,9 @@ Opening `design/index.html` directly from disk also works.
 - **Pro Expiration Interval panel** (under the quota card): how many days a Pro license may go unused
   before it is returned to the organization's Pro quota. Set per organization — Admin edits their own
   organization, Global Admin edits the selected one. **Edit** opens a modal with presets 30 / 60 / 90 /
-  180 days or Never. Mock defaults: 60 days (Medicine 90, Humanities 30).
+  180 days or Never. Mock defaults: 60 days (Medicine 90, Humanities 30). The same rule is stated to
+  users in the Zoom Pro Terms of Use modal (`terms.3` / `terms.note3`) and surfaced as a date on the
+  profile page.
 - **Sorting (Manage Users):** click a column header to sort ascending, click again for descending; the
   header shows an arrow icon and sets `aria-sort`. Name sorts alphabetically in the current language, Last
   Hosted by date (users who never hosted count as the oldest), License as Pro, Temp. Pro, Basic (Large
@@ -98,7 +113,7 @@ Opening `design/index.html` directly from disk also works.
   (date & time, duration, participants) and one row per license type with an Assign/Revoke button.
   A row's note is just the quota, e.g. "1 of 3 left", shown only for licenses the user does not hold;
   the current license's row is highlighted. A held license shows "Expires in N days" (no date) beside
-  its name instead. **Pro:** last use (or, if the user never used it, the license's creation date, mock `USER_LICENSE.created_at`
+  its name instead — the profile page shows the absolute date for the same rule. **Pro:** last use (or, if the user never used it, the license's creation date, mock `USER_LICENSE.created_at`
   = `licenseCreatedAt`) + the organization's Pro expiration interval ("Never expires" for
   0 days, orange within 7 days, red once expired), counted from the mock "today" (`MockData.TODAY`,
   14 Sep 2026) so the demo stays stable. **Temp. Pro / Large Meeting:** they last until the next
@@ -179,7 +194,7 @@ Sizes, weights, line heights and spacing are tokens in `:root`:
 assets/css/styles.css      design tokens (light/dark), components, page layouts, responsive rules
 assets/js/i18n.js          EN/TH dictionary; markup uses data-i18n*, attributes
 assets/js/app.js           theme, language, role, dropdown, dialogs, toasts, icon sprite
-assets/js/profile.js       profile license card, return license, OneDrive toggle
+assets/js/profile.js       profile license card, mocked Pro expiry, return license, OneDrive toggle
 assets/js/mock-data.js     mock orgs, users and admins shared by both manage pages
 assets/js/manage-users.js  quotas, search, license editing
 assets/js/manage-admins.js Admin Console: org filter, usage summary, Pro quotas, admins
@@ -191,6 +206,8 @@ assets/js/booking.js       booking calendar, Shared Pool daily capacity, my book
 - **Zoom Pro Terms of Use** modal: from `เงื่อนไขการใช้ ZOOM Pro.txt` (kept locally) — Thai as written (typos
   "เชียง" → "เชียงใหม่", "สิทธ์" → "สิทธิ์" fixed) plus an English translation, in the `terms.*` keys of
   `i18n.js`. "-" lines are the numbered conditions; "*" lines are the Notes box. `@tliccmu` links to LINE.
+  `terms.3` and `terms.note3` (the per-organization Pro expiration interval) are **not** in that source
+  file — they were added to document the rule, so the mismatch is deliberate, not a transcription gap.
 - **User Guide** (navbar + mobile menu): opens https://docs.tlic.cmu.ac.th/cmu-zoom in a new tab.
 
 ## Placeholders to replace
