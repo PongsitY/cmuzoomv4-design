@@ -11,8 +11,11 @@
     theme: 'cmuzoom.theme',
     lang: 'cmuzoom.lang',
     role: 'cmuzoom.role',
-    auth: 'cmuzoom.auth'
+    auth: 'cmuzoom.auth',
+    demoDock: 'cmuzoom.demoDock'
   });
+  // Demo dock state: open (pills shown) or minimized to a floating button.
+  const DEMO_DOCK = Object.freeze({ OPEN: 'open', MINIMIZED: 'minimized' });
 
   const AUTH = Object.freeze({ IN: 'in', OUT: 'out' });
   const THEMES = Object.freeze({ LIGHT: 'light', DARK: 'dark' });
@@ -662,7 +665,39 @@
         <button type="button" data-set-role="${ROLES.GLOBAL}" data-i18n="role.global">Global Admin</button>
       </div>`;
     dock.appendChild(switcher);
+
+    // The X stays last, so page pills mounted later go in front of it.
+    const minimizeButton = document.createElement('button');
+    minimizeButton.type = 'button';
+    minimizeButton.className = 'demo-dock-minimize';
+    minimizeButton.setAttribute('data-i18n-aria-label', 'demo.hide');
+    minimizeButton.setAttribute('data-i18n-title', 'demo.hide');
+    minimizeButton.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>';
+    dock.appendChild(minimizeButton);
+
+    const restoreButton = document.createElement('button');
+    restoreButton.type = 'button';
+    restoreButton.className = 'demo-dock-restore';
+    restoreButton.setAttribute('data-i18n-aria-label', 'demo.show');
+    restoreButton.setAttribute('data-i18n-title', 'demo.show');
+    restoreButton.innerHTML = '<svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg>';
+
+    const setDockState = (dockState, { focus = false } = {}) => {
+      const minimized = dockState === DEMO_DOCK.MINIMIZED;
+      dock.hidden = minimized;
+      restoreButton.hidden = !minimized;
+      document.body.classList.toggle('demo-dock-minimized', minimized);
+      writeStorage(STORAGE_KEYS.demoDock, dockState);
+      if (focus) {
+        (minimized ? restoreButton : minimizeButton).focus();
+      }
+    };
+    minimizeButton.addEventListener('click', () => setDockState(DEMO_DOCK.MINIMIZED, { focus: true }));
+    restoreButton.addEventListener('click', () => setDockState(DEMO_DOCK.OPEN, { focus: true }));
+
     document.body.appendChild(dock);
+    document.body.appendChild(restoreButton);
+    setDockState(pick(readStorage(STORAGE_KEYS.demoDock), Object.values(DEMO_DOCK), DEMO_DOCK.OPEN));
   }
 
   /**
@@ -676,7 +711,7 @@
       console.error('[app] No demo dock to mount control into', element);
       return false;
     }
-    dock.appendChild(element);
+    dock.insertBefore(element, dock.querySelector('.demo-dock-minimize'));
     element.hidden = false;
     return true;
   }
