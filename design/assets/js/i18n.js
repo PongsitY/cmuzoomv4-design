@@ -829,12 +829,16 @@
       'demo.userName': 'Anong Srisuk',
       // Alias: the prototype's license key is `emergencyPro`, production's slug is `emergPro`.
       'license.emergencyPro': 'Emergency Pro',
-      /* profile-agent */ 'demo.userLicense': 'User license'
+      /* profile-agent */ 'demo.userLicense': 'User license',
+      'demo.hide': 'Hide demo controls',
+      'demo.show': 'Show demo controls'
     },
     th: {
       'demo.userName': 'อนงค์ ศรีสุข',
       'license.emergencyPro': 'Emergency Pro',
-      /* profile-agent */ 'demo.userLicense': 'สิทธิ์ของผู้ใช้'
+      /* profile-agent */ 'demo.userLicense': 'สิทธิ์ของผู้ใช้',
+      'demo.hide': 'ซ่อนตัวควบคุมสาธิต',
+      'demo.show': 'แสดงตัวควบคุมสาธิต'
     }
   };
 

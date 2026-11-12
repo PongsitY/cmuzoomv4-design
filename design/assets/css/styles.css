@@ -1125,6 +1125,56 @@ button {
   backdrop-filter: var(--glass-blur);
 }
 
+/* X at the end of the dock: minimizes it to the floating restore button. */
+.demo-dock-minimize,
+.demo-dock-restore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-lg), var(--glass-highlight);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.demo-dock-minimize {
+  width: 36px;
+  height: 36px;
+}
+
+.demo-dock-restore {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 50;
+  width: 44px;
+  height: 44px;
+}
+
+.demo-dock-minimize:hover,
+.demo-dock-restore:hover {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.demo-dock-minimize:focus-visible,
+.demo-dock-restore:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.demo-dock[hidden],
+.demo-dock-restore[hidden] {
+  display: none;
+}
+
 .demo-label {
   font-size: var(--fs-2xs);
   font-weight: var(--fw-regular);
@@ -3336,9 +3386,20 @@ body:has(.page-centered) {
     gap: 8px;
   }
 
+  /* Wide pills (User license) wrap inside the screen so the X stays visible. */
   .demo-switcher {
     justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 6px;
+    min-width: 0;
     padding-left: 12px;
+    border-radius: var(--radius-lg);
+  }
+
+  .demo-switcher .segmented {
+    flex-wrap: wrap;
+    min-width: 0;
+    border-radius: var(--radius-lg);
   }
 
   .demo-switcher .segmented button {
@@ -3350,13 +3411,27 @@ body:has(.page-centered) {
     bottom: 72px;
   }
 
+  /* Phones stack the pills, so the X sits on its own at the end. */
+  .demo-dock-minimize {
+    align-self: flex-end;
+  }
+
   /* Extra room when the dock holds two stacked pills. */
-  body:has(.demo-dock > :nth-child(2)) .toast-region {
+  body:has(.demo-switcher + .demo-switcher) .toast-region {
     bottom: 124px;
   }
 
-  body:has(.demo-dock > :nth-child(2)) .page {
+  body:has(.demo-switcher + .demo-switcher) .page {
     padding-bottom: 140px;
+  }
+
+  /* Minimized: only the small floating button remains. */
+  body.demo-dock-minimized .toast-region {
+    bottom: 72px;
+  }
+
+  body.demo-dock-minimized .page {
+    padding-bottom: 72px;
   }
 
   .booking-card {
@@ -3435,6 +3510,8 @@ body:has(.page-centered) {
   .menu,
   .modal,
   .demo-switcher,
+  .demo-dock-minimize,
+  .demo-dock-restore,
   .landing-content {
     background: var(--surface);
   }

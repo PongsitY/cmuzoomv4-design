@@ -51,6 +51,9 @@ under the login button (`landing.error*` keys), anything else falls back to the 
 - **Account menu:** avatar + name + email, Edit Profile, language (EN/TH), theme (light/dark), Logout. The
   navbar shows the name next to the avatar (hidden at 420px and below).
 - **Demo view switcher** (bottom-left, profile + manage pages): User / Admin / Global Admin (default Admin).
+  - The **X** after the last demo pill minimizes the whole bar to a small floating gear button at the
+    bottom left (handy for clean screenshots); the gear brings it back. The choice is remembered in
+    localStorage `cmuzoom.demoDock` (`open` / `minimized`) across pages.
   - User: no Manage Users / Admin Console links; both manage pages show the no-permission card.
   - Admin: fixed to the signed-in user's organization (Anong Srisuk, Faculty of Engineering).
   - Global Admin: organization dropdown to switch between organizations.
