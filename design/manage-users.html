@@ -12,9 +12,10 @@
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/mock-data.js"></script>
+  <script src="assets/js/pool-holders.js" defer></script>
   <script src="assets/js/manage-users.js" defer></script>
 </head>
-<body data-demo-switcher>
+<body data-demo-switcher data-page="manage-users">
   <!-- ===== Navbar (shared with profile.html) ===== -->
   <header class="navbar">
     <div class="navbar-inner">
@@ -47,16 +48,16 @@
 
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
-          <span class="avatar avatar-sm" aria-hidden="true">AS</span>
-          <span class="avatar-name">Anong Srisuk</span>
+          <span class="avatar user-avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name" data-i18n="demo.userName">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
         <div class="menu" id="user-menu" data-dropdown-menu hidden>
           <div class="menu-header">
-            <span class="avatar avatar-lg" aria-hidden="true">AS</span>
+            <span class="avatar user-avatar avatar-lg" aria-hidden="true">AS</span>
             <div>
-              <strong>Anong Srisuk</strong>
+              <strong data-i18n="demo.userName">Anong Srisuk</strong>
               <p class="menu-email">anong.s@cmu.ac.th</p>
               <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
             </div>
@@ -116,34 +117,35 @@
   </header>
 
   <!-- ===== 2. Manage Users ===== -->
+  <!-- Mirrors production app/pages/manage-users.vue; manage-users.js fills the dynamic parts. -->
   <main class="page page-wide">
     <section class="card no-permission" data-no-permission hidden>
       <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg></span>
-      <h1 data-i18n="manage.noPermissionTitle">You don’t have access to this page</h1>
+      <h1 data-i18n="manage.noPermissionTitle"></h1>
       <p data-i18n="manage.noPermissionBody"></p>
       <a class="btn btn-primary" href="profile.html">
         <svg class="icon" aria-hidden="true"><use href="#i-arrow-left"></use></svg>
-        <span data-i18n="manage.backToProfile">Back to profile</span>
+        <span data-i18n="manage.backToProfile"></span>
       </a>
     </section>
 
     <div class="manage-grid" data-manage hidden>
       <div class="manage-side">
         <aside class="card quota-card" aria-labelledby="quota-title">
-          <h2 class="card-title" id="quota-title" data-quota-title>Pro Quotas</h2>
+          <h2 id="quota-title" class="card-title" data-quota-title></h2>
           <div class="quota-list" data-quota-list></div>
         </aside>
 
         <section class="card expiry-card" aria-labelledby="expiry-title">
-          <h2 class="card-title" id="expiry-title" data-i18n="expiry.title">Pro Expiration Interval</h2>
+          <h2 id="expiry-title" class="card-title" data-i18n="expiry.title"></h2>
           <div class="expiry-row">
             <p class="expiry-value">
               <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
               <span data-expiry-value></span>
             </p>
-            <button type="button" class="btn btn-sm btn-ghost expiry-edit" data-expiry-edit aria-haspopup="dialog" data-i18n-aria-label="expiry.editLabel">
-              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-pencil"></use></svg>
-              <span data-i18n="expiry.edit">Edit</span>
+            <!-- Global Admin only (manage-users.js hides it for org admins). -->
+            <button type="button" class="icon-button expiry-edit" data-expiry-edit aria-haspopup="dialog" data-i18n-aria-label="expiry.editLabel" data-i18n-title="expiry.edit" hidden>
+              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-settings"></use></svg>
             </button>
           </div>
           <p class="expiry-desc" data-expiry-desc></p>
@@ -153,41 +155,52 @@
       <section class="card users-card" aria-labelledby="org-name">
         <div class="users-header">
           <div class="org-heading">
-            <h1 id="org-name" data-org-name>Faculty of Engineering</h1>
-            <label class="visually-hidden" for="org-select" data-i18n="manage.organization">Organization</label>
-            <select class="select org-select" id="org-select" data-org-select hidden></select>
-            <span class="org-count" data-user-count></span>
+            <!-- A Global Admin picks the organization from the select, which already shows its name;
+                 the heading stays for screen readers only. -->
+            <h1 id="org-name" data-org-name></h1>
+            <label class="visually-hidden" for="org-select" data-i18n="manage.organization"></label>
+            <select id="org-select" class="select org-select" data-org-select hidden></select>
           </div>
-          <label class="field">
-            <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
-            <span class="visually-hidden" data-i18n="manage.search">Search name or email</span>
-            <input type="search" autocomplete="off" data-search data-i18n-placeholder="manage.search">
-          </label>
+
+          <form class="field" role="search" data-search-form>
+            <label class="visually-hidden" for="user-search" data-i18n="manage.search"></label>
+            <input id="user-search" type="search" autocomplete="off" data-search data-i18n-placeholder="manage.search">
+            <button type="submit" class="search-submit" data-i18n-aria-label="manage.searchSubmit" data-i18n-title="manage.searchSubmit">
+              <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+            </button>
+          </form>
         </div>
 
         <div class="table-scroll">
-          <table class="users-table">
+          <table class="users-table manage-users-table">
             <thead>
               <tr>
-                <!-- Click a header to sort; manage-users.js keeps aria-sort and the icon in step. -->
+                <!-- Multi-column sort: each click steps asc → desc → off; manage-users.js renders the indicators. -->
                 <th scope="col" data-sort-header="name">
-                  <button type="button" class="sort-button" data-sort="name"><span data-i18n="table.name">Name</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                  <button type="button" class="sort-button" data-sort="name"><span data-i18n="table.name"></span><span class="sort-indicator" aria-hidden="true" data-sort-indicator></span></button>
+                </th>
+                <th scope="col" class="col-account-type" data-sort-header="accountType">
+                  <button type="button" class="sort-button" data-sort="accountType"><span data-i18n="table.accountType"></span><span class="sort-indicator" aria-hidden="true" data-sort-indicator></span></button>
                 </th>
                 <th scope="col" class="col-last-use" data-sort-header="lastUse">
-                  <button type="button" class="sort-button" data-sort="lastUse"><span data-i18n="table.lastUse">Last Hosted</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                  <button type="button" class="sort-button" data-sort="lastUse"><span data-i18n="table.lastUse"></span><span class="sort-indicator" aria-hidden="true" data-sort-indicator></span></button>
                 </th>
                 <th scope="col" class="col-license" data-sort-header="license">
-                  <button type="button" class="sort-button" data-sort="license"><span data-i18n="table.license">License</span><svg class="icon icon-sm sort-icon" aria-hidden="true"><use href="#i-arrow-up-down"></use></svg></button>
+                  <button type="button" class="sort-button" data-sort="license"><span data-i18n="table.license"></span><span class="sort-indicator" aria-hidden="true" data-sort-indicator></span></button>
                 </th>
               </tr>
             </thead>
             <tbody data-user-rows></tbody>
           </table>
+
           <div class="empty-state" data-empty hidden>
             <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
-            <p data-i18n="manage.empty">No users match your search.</p>
+            <p data-i18n="manage.empty"></p>
+            <button type="button" class="link-button" data-provision hidden></button>
           </div>
         </div>
+
+        <div data-users-pagination></div>
       </section>
     </div>
   </main>
@@ -228,40 +241,13 @@
     </div>
   </dialog>
 
-  <!-- Pro expiration interval modal: options filled by manage-users.js for the current organization. -->
-  <dialog class="modal" id="expiry-modal" aria-labelledby="expiry-modal-title">
-    <div class="modal-panel">
-      <div class="modal-header">
-        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg></span>
-        <div class="modal-title-group">
-          <h2 id="expiry-modal-title" data-i18n="expiry.modalTitle">Edit Pro expiration interval</h2>
-          <p class="modal-subtitle" data-expiry-org></p>
-        </div>
-        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
-          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
-        </button>
-      </div>
-      <div class="modal-body">
-        <fieldset class="expiry-fieldset">
-          <legend class="modal-section-title" data-i18n="expiry.legend">Expire Pro after no use for</legend>
-          <div class="expiry-options" data-expiry-options></div>
-        </fieldset>
-        <p class="modal-note" data-i18n="expiry.modalNote"></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
-        <button type="button" class="btn btn-primary" data-expiry-save data-i18n="expiry.save">Save</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- License modal: filled by manage-users.js when a license bubble is clicked. -->
-  <dialog class="modal modal-wide" id="license-modal" aria-labelledby="license-modal-name">
+  <!-- License modal (production LicenseModal.vue): filled by manage-users.js when a row is clicked. -->
+  <dialog class="modal modal-wide" id="license-modal" aria-labelledby="license-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
         <span class="avatar avatar-md" aria-hidden="true" data-lm-initials></span>
         <div class="modal-title-group">
-          <h2 id="license-modal-name" data-lm-name></h2>
+          <h2 id="license-modal-title" data-lm-name></h2>
           <p class="modal-subtitle" data-lm-email></p>
         </div>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
@@ -272,9 +258,9 @@
       <div class="modal-body">
         <section class="modal-section" aria-labelledby="license-modal-manage">
           <div class="modal-section-head">
-            <h3 class="modal-section-title" id="license-modal-manage" data-i18n="licenseModal.license">Manage license</h3>
+            <h3 id="license-modal-manage" class="modal-section-title" data-i18n="licenseModal.license"></h3>
             <div class="current-license">
-              <span class="modal-section-meta" data-i18n="licenseModal.current">Current license</span>
+              <span class="modal-section-meta" data-i18n="licenseModal.current"></span>
               <span class="current-license-badges" data-lm-current></span>
             </div>
           </div>
@@ -283,7 +269,7 @@
 
         <section class="modal-section" aria-labelledby="license-modal-usage">
           <div class="modal-section-head">
-            <h3 class="modal-section-title" id="license-modal-usage" data-i18n="licenseModal.usageTitle">Usage log · last 30 days</h3>
+            <h3 id="license-modal-usage" class="modal-section-title" data-i18n="licenseModal.usageTitle"></h3>
             <span class="modal-section-meta" data-lm-usage-count></span>
           </div>
           <div class="usage-log" data-lm-usage></div>
@@ -292,22 +278,44 @@
     </div>
   </dialog>
 
-  <!-- Assign/Revoke confirmation, opened on top of the license modal: text filled by manage-users.js. -->
-  <dialog class="modal" id="confirm-license-modal" aria-labelledby="confirm-license-title">
+  <!-- Assign/Revoke confirmation, stacked on top of the license modal: text filled by manage-users.js. -->
+  <dialog class="modal" id="confirm-license-modal" aria-labelledby="confirm-license-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
-        <span class="modal-icon" data-cl-icon><svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg></span>
-        <h2 id="confirm-license-title" data-cl-title></h2>
+        <span class="modal-icon" data-cl-icon><svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg></span>
+        <h2 id="confirm-license-modal-title" data-cl-title></h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body" data-cl-body></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel"></button>
+        <button type="button" class="btn" data-cl-confirm></button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Pro expiration interval (Global Admin): radios filled by manage-users.js. -->
+  <dialog class="modal" id="expiry-modal" aria-labelledby="expiry-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg></span>
+        <h2 id="expiry-modal-title" data-i18n="expiry.modalTitle"></h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
       </div>
       <div class="modal-body">
-        <p class="confirm-body" data-cl-body></p>
+        <fieldset class="expiry-fieldset">
+          <legend data-i18n="expiry.legend"></legend>
+          <div class="expiry-options" data-expiry-options></div>
+        </fieldset>
+        <p class="modal-note" data-i18n="expiry.modalNote"></p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
-        <button type="button" class="btn" data-cl-confirm></button>
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel"></button>
+        <button type="button" class="btn btn-primary" data-expiry-save data-i18n="expiry.save"></button>
       </div>
     </div>
   </dialog>

@@ -14,7 +14,7 @@
   <script src="assets/js/mock-data.js"></script>
   <script src="assets/js/booking.js" defer></script>
 </head>
-<body data-demo-switcher>
+<body data-demo-switcher data-page="booking">
   <!-- ===== Navbar (shared with profile.html / manage-users.html) ===== -->
   <header class="navbar">
     <div class="navbar-inner">
@@ -47,16 +47,16 @@
 
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
-          <span class="avatar avatar-sm" aria-hidden="true">AS</span>
-          <span class="avatar-name">Anong Srisuk</span>
+          <span class="avatar user-avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name" data-i18n="demo.userName">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
         <div class="menu" id="user-menu" data-dropdown-menu hidden>
           <div class="menu-header">
-            <span class="avatar avatar-lg" aria-hidden="true">AS</span>
+            <span class="avatar user-avatar avatar-lg" aria-hidden="true">AS</span>
             <div>
-              <strong>Anong Srisuk</strong>
+              <strong data-i18n="demo.userName">Anong Srisuk</strong>
               <p class="menu-email">anong.s@cmu.ac.th</p>
               <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
             </div>
@@ -115,19 +115,26 @@
     </div>
   </header>
 
-  <!-- ===== 3. Booking Center ===== -->
+  <!-- ===== 3. Booking Center (production app/pages/booking.vue) ===== -->
   <main class="page page-wide">
-    <div class="page-header">
-      <h1 data-i18n="booking.title">ZOOM Booking Center</h1>
-      <p class="page-subtitle" data-i18n="booking.subtitle">Book a Temporary Pro or Large Meeting license for a day, in one or more time slots.</p>
-    </div>
+    <h1 class="visually-hidden" data-i18n="booking.title">ZOOM Booking Center</h1>
 
     <div class="booking-grid">
-      <section class="card booking-card" aria-labelledby="booking-form-title">
-        <h2 class="card-title" id="booking-form-title" data-i18n="booking.formTitle">Book a license</h2>
+      <!-- My bookings: skeleton, grouped list or empty state, rendered by booking.js. -->
+      <section class="card bookings-card" aria-labelledby="my-bookings-title">
+        <h2 id="my-bookings-title" class="card-title" data-i18n="booking.myBookings">My bookings</h2>
+        <div data-my-bookings></div>
+      </section>
 
+      <section class="card booking-card" aria-labelledby="booking-form-title">
+        <h2 id="booking-form-title" class="card-title" data-i18n="booking.formTitle">Book a license</h2>
+
+        <!-- Step 1: license -->
         <div class="booking-step">
-          <p class="booking-step-label"><span class="step-number">1</span> <span data-i18n="booking.step.license">Choose a license</span></p>
+          <p class="booking-step-label">
+            <span class="step-number">1</span>
+            <span data-i18n="booking.step.license">Choose a license</span>
+          </p>
           <div class="license-picker" role="radiogroup" data-license-picker data-i18n-aria-label="booking.step.license">
             <label class="license-option">
               <input type="radio" name="booking-license" value="tempPro" data-license-radio>
@@ -146,37 +153,50 @@
           </div>
         </div>
 
+        <!-- Step 2: day -->
         <div class="booking-step">
-          <p class="booking-step-label"><span class="step-number">2</span> <span data-i18n="booking.step.date">Choose an available day</span></p>
+          <p class="booking-step-label">
+            <span class="step-number">2</span>
+            <span data-i18n="booking.step.date">Choose an available day</span>
+          </p>
           <p class="booking-hint" data-pick-license-hint data-i18n="booking.pickLicenseFirst">Choose a license first to see available days.</p>
 
-          <div class="calendar" data-calendar aria-disabled="true">
-            <div class="calendar-head">
-              <button type="button" class="icon-button" data-cal-prev data-i18n-aria-label="booking.prevMonth">
-                <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
-              </button>
-              <span class="calendar-title" data-cal-title></span>
-              <button type="button" class="icon-button" data-cal-next data-i18n-aria-label="booking.nextMonth">
-                <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
-              </button>
+          <!-- Dimmed and inert while that license's availability loads. -->
+          <div class="loading-region" data-availability-region>
+            <div class="calendar" data-calendar aria-disabled="true">
+              <div class="calendar-head">
+                <button type="button" class="icon-button" data-cal-prev data-i18n-aria-label="booking.prevMonth">
+                  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+                </button>
+                <span class="calendar-title" data-cal-title></span>
+                <button type="button" class="icon-button" data-cal-next data-i18n-aria-label="booking.nextMonth">
+                  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                </button>
+              </div>
+              <div class="calendar-weekdays" data-cal-weekdays></div>
+              <div class="calendar-grid" data-cal-grid></div>
             </div>
-            <div class="calendar-weekdays" data-cal-weekdays></div>
-            <div class="calendar-grid" data-cal-grid></div>
           </div>
         </div>
 
+        <!-- Step 3: time slots -->
         <div class="booking-step">
           <p class="booking-step-label">
-            <span class="step-number">3</span> <span data-i18n="booking.step.time">Choose time slot(s)</span>
+            <span class="step-number">3</span>
+            <span data-i18n="booking.step.time">Choose time slot(s)</span>
             <span class="date-chip" data-picked-date hidden></span>
           </p>
           <p class="booking-hint" data-pick-date-hint data-i18n="booking.pickDateFirst">Choose a day first to see time slots.</p>
 
-          <div class="time-slot-picker" role="group" data-time-slot-picker aria-disabled="true" data-i18n-aria-label="booking.step.time"></div>
+          <div class="time-slot-picker loading-region" role="group" data-time-slot-picker aria-disabled="true" data-i18n-aria-label="booking.step.time"></div>
         </div>
 
+        <!-- Step 4: details -->
         <div class="booking-step">
-          <p class="booking-step-label"><span class="step-number">4</span> <span data-i18n="booking.step.details">Add details</span></p>
+          <p class="booking-step-label">
+            <span class="step-number">4</span>
+            <span data-i18n="booking.step.details">Add details</span>
+          </p>
 
           <fieldset class="booking-field">
             <legend class="booking-field-label" data-i18n="booking.bookFor">Book for</legend>
@@ -185,52 +205,48 @@
                 <input type="radio" name="booking-for" value="self" data-book-for checked>
                 <span data-i18n="booking.forSelf">Myself</span>
               </label>
-              <!-- "Someone else" with its email box beside it (shown only when selected). -->
+
               <div class="choice-row">
                 <label class="choice-option">
                   <input type="radio" name="booking-for" value="other" data-book-for>
                   <span data-i18n="booking.forOther">Someone else</span>
                 </label>
+                <!-- The `hidden` attribute: styles.css splits the row only while the box is not [hidden]. -->
                 <div class="input-group" data-email-field hidden>
                   <label class="visually-hidden" for="booking-email" data-i18n="booking.emailLabel">Email (CMU account Only)</label>
-                  <input class="input" id="booking-email" type="text" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false"
+                  <input id="booking-email" class="input" type="text" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false"
                     maxlength="64" aria-required="true" aria-describedby="booking-email-error" data-email-input data-i18n-placeholder="booking.emailPlaceholder">
-                  <span class="input-suffix" data-email-domain>@cmu.ac.th</span>
+                  <span class="input-suffix">@cmu.ac.th</span>
                 </div>
               </div>
-              <p class="field-error" id="booking-email-error" data-email-error hidden></p>
+
+              <!-- Validation error, or "not in CMU Zoom yet" + "Check … from MIS" after a failed save. -->
+              <p id="booking-email-error" class="field-error" data-email-error hidden></p>
+              <button type="button" class="link-button" data-provision hidden></button>
             </div>
           </fieldset>
 
           <div class="booking-field booking-field-group">
             <label class="booking-field-label" for="booking-title">
-              <span data-i18n="booking.titleLabel">Title</span> <span class="required-mark" aria-hidden="true">*</span>
+              <span data-i18n="booking.titleLabel">Title</span>
+              <span class="required-mark" aria-hidden="true">*</span>
             </label>
-            <input class="input" id="booking-title" type="text" maxlength="100" aria-required="true" data-title-input data-i18n-placeholder="booking.titlePlaceholder">
+            <input id="booking-title" class="input" type="text" maxlength="100" aria-required="true" data-title-input data-i18n-placeholder="booking.titlePlaceholder">
           </div>
 
           <div class="booking-field booking-field-group">
             <label class="booking-field-label" for="booking-note">
-              <span data-i18n="booking.noteLabel">Contact Info</span>
+              <span data-i18n="booking.noteLabel">Additional information</span>
             </label>
-            <textarea class="textarea" id="booking-note" rows="3" maxlength="200" data-note-input data-i18n-placeholder="booking.notePlaceholder"></textarea>
+            <textarea id="booking-note" class="textarea" rows="3" maxlength="200" data-note-input data-i18n-placeholder="booking.notePlaceholder"></textarea>
             <p class="textarea-count" data-note-count>0/200</p>
           </div>
         </div>
 
         <button type="button" class="btn btn-primary btn-lg btn-block" data-save-booking disabled>
           <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-          <span data-save-label data-i18n="booking.save">Save booking</span>
+          <span data-save-label>Save booking</span>
         </button>
-      </section>
-
-      <section class="card bookings-card" aria-labelledby="my-bookings-title">
-        <h2 class="card-title" id="my-bookings-title" data-i18n="booking.myBookings">My bookings</h2>
-        <div class="booking-list" data-booking-list></div>
-        <div class="empty-state" data-booking-empty hidden>
-          <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
-          <p data-i18n="booking.empty">You have no upcoming bookings.</p>
-        </div>
       </section>
     </div>
   </main>
@@ -272,11 +288,11 @@
   </dialog>
 
   <!-- Booking summary shown before saving: filled by booking.js from the current selection. -->
-  <dialog class="modal" id="confirm-booking-modal" aria-labelledby="confirm-booking-title">
+  <dialog class="modal" id="confirm-booking-modal" aria-labelledby="confirm-booking-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
         <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg></span>
-        <h2 id="confirm-booking-title" data-i18n="confirmBooking.title">Confirm your booking</h2>
+        <h2 id="confirm-booking-modal-title" data-i18n="confirmBooking.title">Confirm your booking</h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
@@ -292,21 +308,22 @@
     </div>
   </dialog>
 
-  <dialog class="modal" id="cancel-booking-modal" aria-labelledby="cancel-booking-title">
+  <!-- Cancel an upcoming booking, or "Free up now" for one in use (title, icon, body and button switch). -->
+  <dialog class="modal" id="cancel-booking-modal" aria-labelledby="cancel-booking-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
-        <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg></span>
-        <h2 id="cancel-booking-title" data-i18n="cancelBooking.title">Cancel this booking?</h2>
+        <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-trash" data-cancel-icon></use></svg></span>
+        <h2 id="cancel-booking-modal-title" data-cancel-title></h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
       </div>
       <div class="modal-body">
-        <p data-i18n="cancelBooking.body"></p>
+        <p data-cancel-body></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
-        <button type="button" class="btn btn-danger" data-confirm-cancel-booking data-i18n="cancelBooking.confirm">Confirm</button>
+        <button type="button" class="btn btn-danger" data-confirm-cancel-booking></button>
       </div>
     </div>
   </dialog>

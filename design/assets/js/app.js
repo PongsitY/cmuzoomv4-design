@@ -17,11 +17,47 @@
   const AUTH = Object.freeze({ IN: 'in', OUT: 'out' });
   const THEMES = Object.freeze({ LIGHT: 'light', DARK: 'dark' });
   const ROLES = Object.freeze({ USER: 'user', ADMIN: 'admin', GLOBAL: 'global' });
-  const LICENSES = Object.freeze({ BASIC: 'basic', PRO: 'pro', TEMP_PRO: 'tempPro' });
+  /**
+   * Every license type. i18n labels live at `license.<value>`; badges use `.badge-<value>`.
+   * Production names Emergency Pro `emergPro` (see PROD_LICENSE_SLUGS); both spellings have a label and badge.
+   */
+  const LICENSES = Object.freeze({
+    BASIC: 'basic',
+    PRO: 'pro',
+    TEMP_PRO: 'tempPro',
+    EMERGENCY_PRO: 'emergencyPro',
+    LARGE_MEETING: 'largeMeeting',
+    RESERVED_PRO: 'reservedPro'
+  });
+  /** A user holds exactly one main license; Pro, Temporary Pro and Emergency Pro are mutually exclusive. */
+  const MAIN_LICENSES = Object.freeze([LICENSES.BASIC, LICENSES.PRO, LICENSES.TEMP_PRO, LICENSES.EMERGENCY_PRO]);
+  /** Held on top of the main license. */
+  const ADDON_LICENSES = Object.freeze([LICENSES.LARGE_MEETING]);
+  /** Quotas the CMU organization holds for everyone (production `SHARED_POOL`). Reserved Pro is quota only. */
+  const SHARED_POOL_LICENSES = Object.freeze([LICENSES.TEMP_PRO, LICENSES.LARGE_MEETING, LICENSES.RESERVED_PRO, LICENSES.EMERGENCY_PRO]);
+  /** Row order of production's license modal (`ROW_ORDER` in LicenseModal.vue). */
+  const HELD_LICENSE_ORDER = Object.freeze([LICENSES.PRO, LICENSES.TEMP_PRO, LICENSES.EMERGENCY_PRO, LICENSES.LARGE_MEETING]);
+  /** Prototype key -> production slug, where they differ. */
+  const PROD_LICENSE_SLUGS = Object.freeze({ [LICENSES.EMERGENCY_PRO]: 'emergPro' });
   const EVENTS = Object.freeze({ LANG: 'app:langchange', ROLE: 'app:rolechange' });
   const DATE_LOCALES = Object.freeze({ en: 'en-GB', th: 'th-TH' });
   const TOAST_DURATION_MS = 3200;
   const DEFAULT_ROLE = ROLES.ADMIN;
+
+  // License expiry (production useLicenseExpiry.ts): warn at <= 60 min left (under a day) or <= 7 days left.
+  const MINUTE_MS = 60 * 1000;
+  const HOUR_MINUTES = 60;
+  const DAY_MS = 24 * HOUR_MINUTES * MINUTE_MS;
+  const EXPIRY_SOON_MINUTES = 60;
+  const EXPIRY_SOON_DAYS = 7;
+  const EXPIRY_NEVER = 'never';
+  const EXPIRY_TONES = Object.freeze({ NORMAL: 'normal', WARN: 'warn', DANGER: 'danger' });
+  // The production classes for each tone (`.license-action-expiry` / `.license-countdown` modifiers).
+  const EXPIRY_TONE_CLASSES = Object.freeze({ normal: '', warn: 'is-soon', danger: 'is-overdue' });
+
+  // Table pagination (production TablePagination.vue): the backend caps a page at 100 rows.
+  const PAGE_SIZES = Object.freeze([20, 50, 100]);
+  const DEFAULT_PAGE_SIZE = PAGE_SIZES[0];
 
   const root = document.documentElement;
 
@@ -56,7 +92,10 @@
     pencil: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/>',
     shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
     'arrow-up-down': '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>',
-    'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>'
+    'user-plus': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
+    // Production additions (app/utils/icons.ts).
+    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    loader: '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>'
   };
 
   /* ---------- storage ---------- */
@@ -124,6 +163,7 @@
     writeStorage(STORAGE_KEYS.lang, state.lang);
     window.I18N.apply(document);
     syncPressed('data-set-lang', state.lang);
+    rerenderPaginations();
     document.dispatchEvent(new CustomEvent(EVENTS.LANG, { detail: { lang: state.lang } }));
   }
 
@@ -166,14 +206,73 @@
     }
   }
 
-  /** @param {Date} date Localized clock time, e.g. "11:00" (locale decides the exact format). */
+  /** @param {Date} date Localized clock time, e.g. "05:30" (two-digit hour, as production's useFormat). */
   function formatTime(date) {
     try {
-      return new Intl.DateTimeFormat(DATE_LOCALES[state.lang], { hour: 'numeric', minute: '2-digit' }).format(date);
+      return new Intl.DateTimeFormat(DATE_LOCALES[state.lang], { hour: '2-digit', minute: '2-digit' }).format(date);
     } catch (error) {
       console.error('[app] Unable to format time', date, error);
       return date.toISOString().slice(11, 16);
     }
+  }
+
+  /* ---------- license expiry ---------- */
+
+  /** The demo clock (MockData's fixed date with the real time of day) when loaded, else the real clock. */
+  function defaultNow() {
+    const mock = window.MockData;
+    return mock && typeof mock.mockNow === 'function' ? mock.mockNow() : new Date();
+  }
+
+  /**
+   * "Expires in …" for a held license, as production's useLicenseExpiry: under a day it counts
+   * hours and minutes (shared-pool licenses last one booking slot); beyond that, whole days.
+   * @param {Date|string|number|'never'|null|undefined} expiry the instant it lapses, or 'never'
+   * @param {Date|number} [now] defaults to the demo clock
+   * @returns {{text: string, tone: 'normal'|'warn'|'danger', className: ''|'is-soon'|'is-overdue', title: string}|null}
+   *   null when there is no expiry to show; `title` is the exact date/time for a tooltip
+   */
+  function formatExpiry(expiry, now) {
+    if (expiry === null || expiry === undefined) {
+      return null;
+    }
+    const result = (text, tone, title) => ({ text, tone, className: EXPIRY_TONE_CLASSES[tone], title });
+    if (expiry === EXPIRY_NEVER) {
+      return result(window.I18N.t('licenseModal.expiresNever'), EXPIRY_TONES.NORMAL, '');
+    }
+    const at = expiry instanceof Date ? expiry : new Date(expiry);
+    const nowMs = now === undefined ? defaultNow().getTime() : new Date(now).getTime();
+    const msLeft = at.getTime() - nowMs;
+    if (Number.isNaN(msLeft)) {
+      console.error('[app] formatExpiry got an invalid date', expiry, now);
+      return null;
+    }
+    const title = formatDateTime(at);
+    if (msLeft <= 0) {
+      return result(window.I18N.t('licenseModal.expired'), EXPIRY_TONES.DANGER, title);
+    }
+    if (msLeft < DAY_MS) {
+      const minutesLeft = Math.ceil(msLeft / MINUTE_MS);
+      const hours = Math.floor(minutesLeft / HOUR_MINUTES);
+      const minutes = minutesLeft % HOUR_MINUTES;
+      const tone = minutesLeft <= EXPIRY_SOON_MINUTES ? EXPIRY_TONES.WARN : EXPIRY_TONES.NORMAL;
+      if (hours === 0) {
+        return result(window.I18N.t('licenseModal.expiresInMin', { minutes }), tone, title);
+      }
+      const key = minutes === 0 ? 'licenseModal.expiresInHours' : 'licenseModal.expiresInHm';
+      return result(window.I18N.t(key, { hours, minutes }), tone, title);
+    }
+    const days = Math.floor(msLeft / DAY_MS);
+    const tone = days <= EXPIRY_SOON_DAYS ? EXPIRY_TONES.WARN : EXPIRY_TONES.NORMAL;
+    const text = days === 1
+      ? window.I18N.t('licenseModal.expiresOne')
+      : window.I18N.t('licenseModal.expiresIn', { count: days });
+    return result(text, tone, title);
+  }
+
+  /** @param {string} license one of LICENSES */
+  function licenseLabel(license) {
+    return window.I18N.t(`license.${license}`);
   }
 
   /* ---------- dropdowns ---------- */
@@ -320,6 +419,218 @@
     window.setTimeout(() => toast.remove(), TOAST_DURATION_MS);
   }
 
+  /** Mirrors production's useToast(): show(message, tone), success(message), error(message). */
+  const toast = Object.freeze({
+    show: showToast,
+    success: (message) => showToast(message, 'success'),
+    error: (message) => showToast(message, 'error')
+  });
+
+  /* ---------- loading overlay (production AppLoadingOverlay + useLoadingOverlay) ---------- */
+
+  // A counter, not a flag: nested/overlapping calls keep the overlay up until the last one ends.
+  let loadingCount = 0;
+  let focusBeforeBusy = null;
+  const DEFAULT_LOADING_MS = 700;
+
+  function loadingOverlay() {
+    let overlay = document.querySelector('.loading-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'loading-overlay';
+      overlay.setAttribute('popover', 'manual');
+      overlay.setAttribute('role', 'status');
+      overlay.setAttribute('aria-live', 'polite');
+      document.body.appendChild(overlay);
+    }
+    return overlay;
+  }
+
+  /**
+   * An open modal <dialog> makes everything outside it inert, the overlay included, so the
+   * page itself is made inert to block clicks and Enter; focus is put back afterwards.
+   * @param {HTMLElement} overlay
+   * @param {boolean} inert
+   */
+  function setPageInert(overlay, inert) {
+    if (inert) {
+      focusBeforeBusy = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
+    Array.from(document.body.children).forEach((child) => {
+      if (child !== overlay && !child.classList.contains('toast-region')) {
+        child.inert = inert;
+      }
+    });
+    if (!inert && focusBeforeBusy && focusBeforeBusy.isConnected) {
+      focusBeforeBusy.focus();
+    }
+    if (!inert) {
+      focusBeforeBusy = null;
+    }
+  }
+
+  /** @param {HTMLElement} overlay @param {boolean} shown */
+  function togglePopover(overlay, shown) {
+    if (typeof overlay.showPopover !== 'function') {
+      return;
+    }
+    try {
+      const open = overlay.matches(':popover-open');
+      if (shown && !open) {
+        overlay.showPopover();
+      } else if (!shown && open) {
+        overlay.hidePopover();
+      }
+    } catch (error) {
+      // Popover unsupported; the CSS z-index fallback still covers the page outside modals.
+      console.error('[app] Unable to toggle the loading overlay', error);
+    }
+  }
+
+  /** Shows the full-screen "Please wait…" overlay (the panel fades in after 150 ms, as in production). */
+  function showLoading() {
+    loadingCount += 1;
+    if (loadingCount > 1) {
+      return;
+    }
+    const overlay = loadingOverlay();
+    overlay.innerHTML = `
+      <div class="loading-overlay-panel">
+        <svg class="icon spinner" aria-hidden="true"><use href="#i-loader"></use></svg>
+        <span data-i18n="loading.working">${window.I18N.t('loading.working')}</span>
+      </div>`;
+    overlay.classList.add('is-active');
+    setPageInert(overlay, true);
+    togglePopover(overlay, true);
+  }
+
+  /** Hides the overlay once every showLoading() call has been matched. */
+  function hideLoading() {
+    if (loadingCount === 0) {
+      return;
+    }
+    loadingCount -= 1;
+    if (loadingCount > 0) {
+      return;
+    }
+    const overlay = loadingOverlay();
+    overlay.classList.remove('is-active');
+    overlay.innerHTML = '';
+    togglePopover(overlay, false);
+    setPageInert(overlay, false);
+    raiseToasts();
+  }
+
+  /**
+   * Fakes an in-flight change: shows the overlay, waits, runs `task`, hides it (even if it throws).
+   * @template T
+   * @param {() => T|Promise<T>} task
+   * @param {number} [delayMs]
+   * @returns {Promise<T>}
+   */
+  async function withLoading(task, delayMs = DEFAULT_LOADING_MS) {
+    showLoading();
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      return await task();
+    } catch (error) {
+      console.error('[app] Task under the loading overlay failed', error);
+      throw error;
+    } finally {
+      hideLoading();
+    }
+  }
+
+  /* ---------- table pagination (production TablePagination.vue) ---------- */
+
+  let paginationCount = 0;
+  const PAGINATION_ATTR = 'data-pagination';
+  const paginationOptions = new WeakMap();
+
+  /**
+   * Renders the pagination footer into `container` ("1–20 of 345", "Rows per page", prev/next).
+   * Renders nothing when total is 0. Changing the page size returns to page 1. Re-renders itself
+   * on language change. Call again with new options to update it.
+   * @param {HTMLElement} container
+   * @param {{page: number, pageSize: number, total: number, pageSizes?: number[],
+   *   onChange?: (next: {page: number, pageSize: number}) => void}} options
+   */
+  function renderPagination(container, options) {
+    if (!container) {
+      console.error('[app] renderPagination needs a container');
+      return;
+    }
+    const pageSizes = options.pageSizes || PAGE_SIZES;
+    const pageSize = options.pageSize || DEFAULT_PAGE_SIZE;
+    const total = Math.max(0, options.total || 0);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = Math.min(Math.max(1, options.page || 1), totalPages);
+    const current = { ...options, page, pageSize, total, pageSizes };
+    paginationOptions.set(container, current);
+    container.setAttribute(PAGINATION_ATTR, '');
+
+    if (total === 0) {
+      container.innerHTML = '';
+      return;
+    }
+    if (!container.dataset.paginationId) {
+      paginationCount += 1;
+      container.dataset.paginationId = String(paginationCount);
+    }
+    const selectId = `pagination-size-${container.dataset.paginationId}`;
+    const from = (page - 1) * pageSize + 1;
+    const to = Math.min(page * pageSize, total);
+    const t = window.I18N.t;
+    const prev = t('pagination.previous');
+    const next = t('pagination.next');
+
+    container.innerHTML = `
+      <div class="pagination">
+        <span class="pagination-range num">${t('pagination.range', { from, to, total })}</span>
+        <div class="pagination-size">
+          <label for="${selectId}">${t('pagination.perPage')}</label>
+          <select id="${selectId}" class="select" data-pagination-size>
+            ${pageSizes.map((size) => `<option value="${size}"${size === pageSize ? ' selected' : ''}>${size}</option>`).join('')}
+          </select>
+        </div>
+        <div class="pagination-nav">
+          <button type="button" class="icon-button" data-pagination-step="-1" aria-label="${prev}" title="${prev}"${page <= 1 ? ' disabled' : ''}>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+          </button>
+          <span class="num" aria-live="polite">${t('pagination.pageOf', { page, total: totalPages })}</span>
+          <button type="button" class="icon-button" data-pagination-step="1" aria-label="${next}" title="${next}"${page >= totalPages ? ' disabled' : ''}>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+          </button>
+        </div>
+      </div>`;
+
+    const notify = (nextPage, nextSize) => {
+      renderPagination(container, { ...current, page: nextPage, pageSize: nextSize });
+      if (typeof current.onChange === 'function') {
+        try {
+          current.onChange({ page: nextPage, pageSize: nextSize });
+        } catch (error) {
+          console.error('[app] Pagination onChange failed', error);
+        }
+      }
+    };
+    container.querySelector('[data-pagination-size]').addEventListener('change', (event) => {
+      notify(1, Number(event.target.value));
+    });
+    container.querySelectorAll('[data-pagination-step]').forEach((button) => {
+      button.addEventListener('click', () => notify(page + Number(button.dataset.paginationStep), pageSize));
+    });
+  }
+
+  function rerenderPaginations() {
+    document.querySelectorAll(`[${PAGINATION_ATTR}]`).forEach((container) => {
+      const options = paginationOptions.get(container);
+      if (options) {
+        renderPagination(container, options);
+      }
+    });
+  }
+
   /* ---------- icon sprite ---------- */
 
   function injectIconSprite() {
@@ -426,6 +737,15 @@
   window.App = Object.freeze({
     ROLES,
     LICENSES,
+    MAIN_LICENSES,
+    ADDON_LICENSES,
+    SHARED_POOL_LICENSES,
+    HELD_LICENSE_ORDER,
+    PROD_LICENSE_SLUGS,
+    EXPIRY_NEVER,
+    EXPIRY_TONES,
+    PAGE_SIZES,
+    DEFAULT_PAGE_SIZE,
     THEMES,
     EVENTS,
     t: (key, vars) => window.I18N.t(key, vars),
@@ -436,9 +756,16 @@
     formatDate,
     formatDateTime,
     formatTime,
+    formatExpiry,
+    licenseLabel,
     mountDemoControl,
     openModal,
     closeModal,
-    showToast
+    showToast,
+    toast,
+    showLoading,
+    hideLoading,
+    withLoading,
+    renderPagination
   });
 })();

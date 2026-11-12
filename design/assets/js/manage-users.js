@@ -1,469 +1,598 @@
 'use strict';
 
 /**
- * 2. Manage Users — mock organisations/users, quota bars, search, and a
- * per-user license modal (30-day usage log + assign/revoke controls).
+ * 2. Manage Users — mirrors production app/pages/manage-users.vue with LicenseModal.vue,
+ * QuotaBar.vue, SortIndicator.vue and TablePagination (App.renderPagination).
  *
- * Pro is managed by the organization's Admin and Global Admin. Shared Pool licenses (Temp. Pro,
- * Large Meeting) can be given to users in any organization, but only Global Admin can assign or
- * revoke them. Org Admins see them read-only. Large Meeting can go to any user: each one uses a
- * "Reserved Pro for Large Meeting" from its own quota, so it needs no Pro or Temp. Pro of its own.
+ * - Org Admin: their organization's Pro quota; manages Pro only (shared-pool rows are locked).
+ * - Global Admin: any organization (select), plus the Shared Pool quota bars (each opens
+ *   PoolHolders), the Pro expiration interval editor, and every license.
+ * - User: the no-permission card.
  *
- * Mock organizations/users come from mock-data.js; all data is in-memory (resets on reload).
+ * Search, sort and paging run here on the in-memory mock data (production delegates them to the
+ * server with the same rules: server/utils/userSort.ts). All data resets on reload.
+ * Demo: add `?usage=error` to the URL to show the usage log's "could not be loaded" state.
  */
 (function () {
-  const { ROLES, LICENSES, EVENTS, t, formatDate, formatDateTime, formatTime, showToast, getRole, openModal, closeModal } = window.App;
-  const { ADDON_LARGE_MEETING, RESERVED_PRO, CMU_ORG_ID, TODAY, TIME_SLOTS, mockNow, nextSlotBoundary, SIGNED_IN_USER, ORGANIZATIONS, createUsersByOrg, escapeHtml, initials, orgName } = window.MockData;
+  const {
+    ROLES, LICENSES, HELD_LICENSE_ORDER, SHARED_POOL_LICENSES, EVENTS, DEFAULT_PAGE_SIZE,
+    t, toast, formatDate, formatDateTime, formatTime, formatExpiry, getRole,
+    openModal, closeModal, withLoading, renderPagination
+  } = window.App;
+  const {
+    SHARED_POOL_QUOTAS, TIME_SLOTS, SIGNED_IN_USER, ORGANIZATIONS, mockNow, slotAt,
+    createUsersByOrg, proExpiryDays, licenseExpiries, escapeHtml, initials, orgName, displayName
+  } = window.MockData;
 
-  const LICENSE_TYPES = Object.freeze([LICENSES.PRO, LICENSES.TEMP_PRO, ADDON_LARGE_MEETING]);
-  // Shared Pool: every license type held by CMU except Pro (CMU's Pro quota is its own),
-  // lent to users in any organization.
-  const CMU_HELD_TYPES = Object.freeze([LICENSES.TEMP_PRO, ADDON_LARGE_MEETING]);
-  // Quotas CMU holds for everyone: the Shared Pool licenses plus the Pro reserved for Large Meeting.
-  const POOL_QUOTA_TYPES = Object.freeze([...CMU_HELD_TYPES, RESERVED_PRO]);
-  const ACTIONS = Object.freeze({ ASSIGN: 'assign', REVOKE: 'revoke' });
   const LICENSE_MODAL_ID = 'license-modal';
-  const EXPIRY_MODAL_ID = 'expiry-modal';
   const CONFIRM_MODAL_ID = 'confirm-license-modal';
-  // Pro is returned to the org quota after this many days without use (per organization).
-  // 0 = never expires.
+  const EXPIRY_MODAL_ID = 'expiry-modal';
+  const ACTIONS = Object.freeze({ ASSIGN: 'assign', REVOKE: 'revoke' });
+  // Production EXPIRY_PRESETS; 0 = never.
   const EXPIRY_NEVER = 0;
-  const EXPIRY_PRESET_DAYS = Object.freeze([30, 60, 90, 180, EXPIRY_NEVER]);
-  const DEFAULT_EXPIRY_DAYS = 60;
-  const ADMIN_ORG_ID = SIGNED_IN_USER.orgId;
+  const EXPIRY_PRESETS = Object.freeze([30, 60, 90, 180, EXPIRY_NEVER]);
   const PERCENT = 100;
-  const DAY_MS = 24 * 60 * 60 * 1000;
   const MINUTE_MS = 60 * 1000;
-  const MINUTES_PER_HOUR = 60;
-  // "Expires in" turns to a warning at or below this many days (Pro) or minutes (Shared Pool).
-  const EXPIRY_WARNING_DAYS = 7;
-  const SLOT_EXPIRY_WARNING_MINUTES = 60;
+  const DAY_MS = 24 * 60 * MINUTE_MS;
+  // Emergency Pro lasts this long from assignment (production sharedExpiry.emergPro).
+  const EMERGENCY_PRO_DAYS = window.MockData.EMERGENCY_PRO_DURATION_DAYS;
 
-  const CMU_ORG = ORGANIZATIONS.find((org) => org.id === CMU_ORG_ID);
+  /* ---------- sorting (production toggleSort + server/utils/userSort.ts) ---------- */
+
+  const SORT_KEYS = Object.freeze({ NAME: 'name', ACCOUNT_TYPE: 'accountType', LAST_USE: 'lastUse', LICENSE: 'license' });
+  const SORT_ORDERS = Object.freeze({ ASC: 'asc', DESC: 'desc' });
+  const MAX_SORTS = 3;
+  const DEFAULT_SORTS = Object.freeze([
+    Object.freeze({ key: SORT_KEYS.LICENSE, order: SORT_ORDERS.ASC }),
+    Object.freeze({ key: SORT_KEYS.LAST_USE, order: SORT_ORDERS.ASC })
+  ]);
+  // Pro, then Temporary Pro, then Emergency Pro, then no license (production LICENSE_RANK).
+  const LICENSE_RANK = Object.freeze({
+    [LICENSES.PRO]: 0,
+    [LICENSES.TEMP_PRO]: 1,
+    [LICENSES.EMERGENCY_PRO]: 2,
+    [LICENSES.BASIC]: 3
+  });
+  const SORT_COLUMN_LABELS = Object.freeze({
+    [SORT_KEYS.NAME]: 'table.name',
+    [SORT_KEYS.ACCOUNT_TYPE]: 'table.accountType',
+    [SORT_KEYS.LAST_USE]: 'table.lastUse',
+    [SORT_KEYS.LICENSE]: 'table.license'
+  });
+
+  // Production useProvisionAccount: a CMU address, or a bare account name the domain is added to.
+  const CMU_EMAIL_DOMAIN = '@cmu.ac.th';
+  const LOCAL_PART_PATTERN = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/;
+  const PROVISIONED_ACCOUNT_TYPE = window.MockData.ACCOUNT_TYPES.EMPLOYEE;
+  const PROVISIONED_ACCOUNT_ID_BASE = 90000;
+
+  const ADMIN_ORG_ID = SIGNED_IN_USER.orgId;
   const usersByOrg = createUsersByOrg();
-  const expiryDaysByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, org.expiryDays ?? DEFAULT_EXPIRY_DAYS]));
-
-  /* ---------- state & helpers ---------- */
-
-  const SORT_KEYS = Object.freeze({ NAME: 'name', LAST_USE: 'lastUse', LICENSE: 'license' });
-  const SORT_DIRECTIONS = Object.freeze({ ASC: 'ascending', DESC: 'descending' });
-  // Pro first, then Temp. Pro, then Basic (a user with Large Meeting ranks ahead of the same license without).
-  const LICENSE_RANK = Object.freeze({ [LICENSES.PRO]: 0, [LICENSES.TEMP_PRO]: 1, [LICENSES.BASIC]: 2 });
+  const expiryDaysByOrg = new Map(ORGANIZATIONS.map((org) => [org.id, proExpiryDays(org.id)]));
+  const usageUnavailable = new URLSearchParams(window.location.search).get('usage') === 'error';
+  let provisionedCount = 0;
 
   const view = {
+    // A Global Admin can switch organizations; an org admin is pinned to theirs.
     orgId: ADMIN_ORG_ID,
-    query: '',
-    // null = the original order; clicking a header sorts by it, clicking again reverses.
-    sort: null,
+    appliedSearch: '',
+    sorts: DEFAULT_SORTS.map((sort) => ({ ...sort })),
+    page: 1,
+    pageSize: DEFAULT_PAGE_SIZE,
     modalUserId: null,
-    pendingAction: null
+    pending: null,
+    busy: false
   };
 
   const els = {};
+
+  /* ---------- helpers ---------- */
+
+  function isGlobal() {
+    return getRole() === ROLES.GLOBAL;
+  }
+
+  function hasAccess() {
+    return getRole() === ROLES.ADMIN || getRole() === ROLES.GLOBAL;
+  }
 
   function currentOrg() {
     return ORGANIZATIONS.find((org) => org.id === view.orgId) || ORGANIZATIONS[0];
   }
 
-  function licenseLabel(type) {
-    return t(`license.${type}`);
+  function licenseLabel(slug) {
+    return t(`license.${slug}`);
   }
 
-  function isGlobalAdmin() {
-    return getRole() === ROLES.GLOBAL;
+  function icon(name, small) {
+    return `<svg class="icon${small ? ' icon-sm' : ''}" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
   }
 
-  function isCmuHeldType(type) {
-    return CMU_HELD_TYPES.includes(type);
-  }
-
-  function isPoolQuota(type) {
-    return POOL_QUOTA_TYPES.includes(type);
-  }
-
-  function holdsLicense(user, type) {
-    if (type === RESERVED_PRO) {
-      // Only a Large Meeting user without Pro / Temp. Pro of their own needs a reserved Pro.
-      return user.largeMeeting && user.license === LICENSES.BASIC;
+  /** Known account types are translated; anything else is shown as-is. */
+  function accountTypeOf(user) {
+    if (!user.accountType) {
+      return '—';
     }
-    return type === ADDON_LARGE_MEETING ? user.largeMeeting : user.license === type;
+    const key = `accountType.${user.accountType}`;
+    return window.I18N.has(key) ? t(key) : user.accountType;
   }
 
-  /** Assigned count: Pro within the organization; CMU-held types across every organization. */
-  function usedCount(org, type) {
-    const users = isPoolQuota(type) ? [...usersByOrg.values()].flat() : usersByOrg.get(org.id);
-    return users.filter((user) => holdsLicense(user, type)).length;
-  }
-
-  function quotaTotal(org, type) {
-    return isPoolQuota(type) ? CMU_ORG.quotas[type] : org.quotas.pro;
-  }
-
-  function remaining(org, type) {
-    return quotaTotal(org, type) - usedCount(org, type);
-  }
-
-  /**
-   * The quota that stops an action because it is used up, or null. Large Meeting needs a reserved Pro
-   * only for a user with no Pro / Temp. Pro, so that user also needs one free to assign it, and to
-   * revoke their Pro / Temp. Pro while holding it.
-   */
-  function blockingQuota(org, user, type, action) {
-    const needsReserved = user.license === LICENSES.BASIC;
-    if (action === ACTIONS.REVOKE) {
-      return type !== ADDON_LARGE_MEETING && user.largeMeeting && remaining(org, RESERVED_PRO) <= 0 ? RESERVED_PRO : null;
-    }
-    if (type === ADDON_LARGE_MEETING && needsReserved && remaining(org, RESERVED_PRO) <= 0) {
-      return RESERVED_PRO;
-    }
-    return remaining(org, type) <= 0 ? type : null;
+  function allUsers() {
+    return [...usersByOrg.values()].flat();
   }
 
   function findUser(userId) {
-    return usersByOrg.get(view.orgId).find((user) => user.id === userId);
+    return allUsers().find((user) => user.id === userId) || null;
   }
 
-  /**
-   * Why the current role may not perform an action (i18n key), or null when allowed.
-   * Global Admin can do everything; org Admins only manage Pro (assigning it to a Temp. Pro user
-   * releases their Temp. Pro automatically) and cannot touch the CMU-held licenses directly.
-   */
-  function lockReason(type) {
-    return !isGlobalAdmin() && isCmuHeldType(type) ? 'licenseModal.managedByGlobal' : null;
+  function holds(user, slug) {
+    switch (slug) {
+      case LICENSES.LARGE_MEETING: return user.largeMeeting;
+      case LICENSES.RESERVED_PRO: return user.largeMeeting && user.license === LICENSES.BASIC;
+      default: return user.license === slug;
+    }
   }
 
-  /* ---------- rendering: page ---------- */
+  /** Pro is capped per organization; the rest come from the university-wide shared pool. */
+  function quotaFor(slug, org = currentOrg()) {
+    if (slug === LICENSES.PRO) {
+      return { used: usersByOrg.get(org.id).filter((user) => holds(user, slug)).length, total: org.quotas.pro };
+    }
+    return { used: allUsers().filter((user) => holds(user, slug)).length, total: SHARED_POOL_QUOTAS[slug] ?? 0 };
+  }
 
-  function renderQuotaItem(org, type) {
-    const total = quotaTotal(org, type);
-    const used = usedCount(org, type);
-    const label = licenseLabel(type);
-    const percent = Math.round((used / total) * PERCENT);
-    const isFull = used >= total;
+  function expiriesOf(user) {
+    return licenseExpiries(user, expiryDaysByOrg.get(user.orgId));
+  }
+
+  /* ---------- quotas (production QuotaBar.vue) ---------- */
+
+  function renderQuotaBar(slug, actionLabel) {
+    const { used, total } = quotaFor(slug);
+    const label = licenseLabel(slug);
+    const percent = total > 0 ? Math.min(PERCENT, Math.round((used / total) * PERCENT)) : 0;
+    const isFull = total > 0 && used >= total;
+    const left = Math.max(total - used, 0);
+    // With an action label the whole row is a button that opens the holders list.
+    const actionAttrs = actionLabel
+      ? ` role="button" tabindex="0" aria-haspopup="dialog" aria-label="${escapeHtml(actionLabel)}" title="${escapeHtml(actionLabel)}" data-pool-license="${slug}"`
+      : '';
     return `
-      <div class="quota-item">
+      <div class="quota-item${actionLabel ? ' is-clickable' : ''}"${actionAttrs}>
         <div class="quota-item-head">
-          <span class="badge badge-${type}">${escapeHtml(label)}</span>
-          <span class="quota-left">${escapeHtml(t('manage.left', { count: Math.max(total - used, 0) }))}</span>
+          <span class="badge badge-${slug}">${escapeHtml(label)}</span>
+          <span class="quota-left">${escapeHtml(t('manage.left', { count: left }))}</span>
         </div>
         <div class="progress" role="progressbar" aria-label="${escapeHtml(label)}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${used}">
-          <div class="progress-bar${isFull ? ' is-full' : ''}" data-license="${type}" style="width:${Math.min(percent, PERCENT)}%"></div>
+          <div class="progress-bar${isFull ? ' is-full' : ''}" data-license="${slug}" style="width: ${percent}%"></div>
         </div>
         <p class="quota-numbers">${escapeHtml(t('manage.used', { used, total, percent }))}</p>
       </div>`;
   }
 
-  function renderQuotas(org) {
-    if (!isGlobalAdmin()) {
-      // Org Admins only see their organization's Pro quota.
-      els.quotaTitle.textContent = t('manage.quotas');
-      els.quotaList.innerHTML = renderQuotaItem(org, LICENSES.PRO);
+  function renderQuotas() {
+    els.quotaTitle.textContent = isGlobal() ? t('manage.licenseQuotas') : t('manage.quotas');
+    const pro = renderQuotaBar(LICENSES.PRO);
+    if (!isGlobal()) {
+      els.quotaList.innerHTML = pro;
       return;
     }
-    els.quotaTitle.textContent = t('manage.licenseQuotas');
-    els.quotaList.innerHTML = `
-      <div class="quota-group">
-        <p class="quota-group-label">${escapeHtml(orgName(org))}</p>
-        ${renderQuotaItem(org, LICENSES.PRO)}
-      </div>
-      <div class="quota-group">
-        <p class="quota-group-label">${escapeHtml(t('manage.quotaGroupCmu'))}</p>
-        ${POOL_QUOTA_TYPES.map((type) => renderQuotaItem(org, type)).join('')}
-      </div>`;
-  }
-
-  function renderOrgHeading(org) {
-    const isGlobal = isGlobalAdmin();
-    els.orgName.textContent = orgName(org);
-    // Keep the heading for assistive tech when the org selector replaces it visually.
-    els.orgName.classList.toggle('visually-hidden', isGlobal);
-    els.orgSelect.hidden = !isGlobal;
-    els.orgSelect.innerHTML = ORGANIZATIONS.map((item) =>
-      `<option value="${item.id}"${item.id === org.id ? ' selected' : ''}>${escapeHtml(orgName(item))}</option>`
+    const pool = SHARED_POOL_LICENSES.map((slug) =>
+      renderQuotaBar(slug, t('poolHolders.view', { license: licenseLabel(slug) }))
     ).join('');
-    els.userCount.textContent = t('manage.userCount', { count: usersByOrg.get(org.id).length });
+    els.quotaList.innerHTML = `
+      ${pro}
+      <hr class="quota-divider">
+      <p class="quota-group-label">${escapeHtml(t('manage.quotaGroupCmu'))}</p>
+      ${pool}`;
   }
 
-  function largeMeetingBubble(user) {
-    if (!user.largeMeeting) {
-      return '';
-    }
-    return `<span class="badge badge-largeMeeting">${escapeHtml(licenseLabel(ADDON_LARGE_MEETING))}</span>`;
-  }
-
-  function renderRow(user) {
-    const lastUse = user.lastUse
-      ? `<span class="last-use">${escapeHtml(formatDate(user.lastUse))}</span>`
-      : `<span class="last-use is-never">${escapeHtml(t('manage.never'))}</span>`;
-
-    return `
-      <tr>
-        <td>
-          <div class="user-cell">
-            <span class="avatar avatar-sm" aria-hidden="true">${escapeHtml(initials(user.name))}</span>
-            <div>
-              <span class="user-name">${escapeHtml(user.name)}</span>
-              <span class="user-email">${escapeHtml(user.email)}</span>
-            </div>
-          </div>
-        </td>
-        <td data-label="${escapeHtml(t('table.lastUse'))}">${lastUse}</td>
-        <td>
-          <div class="license-cell">
-            <button type="button" class="license-bubble badge-${user.license}" data-open-license data-user-id="${user.id}"
-              aria-haspopup="dialog" aria-label="${escapeHtml(t('licenseModal.open', { name: user.name, license: licenseLabel(user.license) }))}">
-              <span>${escapeHtml(licenseLabel(user.license))}</span>
-              <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
-            </button>
-            ${largeMeetingBubble(user)}
-          </div>
-        </td>
-      </tr>`;
-  }
-
-  /** Ascending comparison of two users on one column; users who never hosted count as the oldest. */
-  function compareUsers(a, b, key, collator) {
-    if (key === SORT_KEYS.LAST_USE) {
-      return (a.lastUse ? a.lastUse.getTime() : -Infinity) - (b.lastUse ? b.lastUse.getTime() : -Infinity);
-    }
-    if (key === SORT_KEYS.LICENSE) {
-      const rank = (user) => LICENSE_RANK[user.license] * 2 + (user.largeMeeting ? 0 : 1);
-      return rank(a) - rank(b);
-    }
-    return collator.compare(a.name, b.name);
-  }
-
-  function sortUsers(users) {
-    if (!view.sort) {
-      return users;
-    }
-    const { key, direction } = view.sort;
-    const collator = new Intl.Collator(window.App.getLang());
-    const sign = direction === SORT_DIRECTIONS.ASC ? 1 : -1;
-    // Ties fall back to the name so the order is stable and predictable in both directions.
-    return [...users].sort((a, b) =>
-      sign * compareUsers(a, b, key, collator) || collator.compare(a.name, b.name)
-    );
-  }
-
-  /** Mirrors the sort state on the headers (aria-sort drives the icon and its colour). */
-  function renderSortHeaders() {
-    document.querySelectorAll('[data-sort-header]').forEach((header) => {
-      if (view.sort && view.sort.key === header.dataset.sortHeader) {
-        header.setAttribute('aria-sort', view.sort.direction);
-      } else {
-        header.removeAttribute('aria-sort');
-      }
-    });
-  }
-
-  function toggleSort(key) {
-    const sameColumn = view.sort && view.sort.key === key;
-    const direction = sameColumn && view.sort.direction === SORT_DIRECTIONS.ASC ? SORT_DIRECTIONS.DESC : SORT_DIRECTIONS.ASC;
-    view.sort = { key, direction };
-    renderSortHeaders();
-    renderTable(currentOrg());
-  }
-
-  function renderTable(org) {
-    const query = view.query.trim().toLowerCase();
-    const users = sortUsers(usersByOrg.get(org.id).filter((user) =>
-      !query || user.name.toLowerCase().includes(query) || user.email.includes(query)
-    ));
-    els.rows.innerHTML = users.map(renderRow).join('');
-    els.empty.hidden = users.length > 0;
-  }
-
-  function render() {
-    const isUser = getRole() === ROLES.USER;
-    els.noPermission.hidden = !isUser;
-    els.manage.hidden = isUser;
-    if (isUser) {
+  function openPoolHolders(slug) {
+    if (!window.PoolHolders) {
+      console.error('[manage-users] pool-holders.js is not loaded');
+      toast.error(t('common.error'));
       return;
     }
-    if (getRole() === ROLES.ADMIN) {
-      view.orgId = ADMIN_ORG_ID;
-    }
-    const org = currentOrg();
-    renderOrgHeading(org);
-    renderQuotas(org);
-    renderExpiry(org);
-    renderTable(org);
+    window.PoolHolders.open({ license: slug, role: getRole(), usersByOrg, onChanged: render });
   }
 
   /* ---------- Pro expiration interval ---------- */
 
-  function expiryLabel(days) {
+  function intervalLabel(days) {
     return days === EXPIRY_NEVER ? t('expiry.never') : t('expiry.days', { count: days });
   }
 
-  function renderExpiry(org) {
-    const count = expiryDaysByOrg.get(org.id);
-    els.expiryValue.textContent = expiryLabel(count);
-    els.expiryDesc.textContent = count === EXPIRY_NEVER ? t('expiry.descNever') : t('expiry.desc', { count });
+  function renderExpiry() {
+    const days = expiryDaysByOrg.get(currentOrg().id);
+    els.expiryValue.textContent = intervalLabel(days);
+    els.expiryDesc.textContent = days === EXPIRY_NEVER ? t('expiry.descNever') : t('expiry.desc', { count: days });
+    els.expiryEdit.hidden = !isGlobal();
   }
 
-  /** Radio tiles for the presets, with `selectedDays` checked. */
-  function renderExpiryOptions(org, selectedDays) {
-    els.expiryOrg.textContent = orgName(org);
-    els.expiryOptions.innerHTML = EXPIRY_PRESET_DAYS.map((days) => `
-      <label class="expiry-option${days === EXPIRY_NEVER ? ' is-never' : ''}">
-        <input type="radio" name="expiry-days" value="${days}"${days === selectedDays ? ' checked' : ''}>
-        <span>${escapeHtml(expiryLabel(days))}</span>
+  function renderExpiryOptions(selectedDays) {
+    els.expiryOptions.innerHTML = EXPIRY_PRESETS.map((days) => `
+      <label>
+        <input type="radio" name="expiry" value="${days}"${days === selectedDays ? ' checked' : ''}>
+        <span>${escapeHtml(intervalLabel(days))}</span>
       </label>`).join('');
   }
 
   function checkedExpiryDays() {
-    const checked = els.expiryOptions.querySelector('input[name="expiry-days"]:checked');
+    const checked = els.expiryOptions.querySelector('input[name="expiry"]:checked');
     return checked ? Number(checked.value) : null;
   }
 
-  function openExpiryModal() {
-    renderExpiryOptions(currentOrg(), expiryDaysByOrg.get(currentOrg().id));
+  function openExpiry() {
+    renderExpiryOptions(expiryDaysByOrg.get(currentOrg().id));
     openModal(EXPIRY_MODAL_ID);
-    const checked = els.expiryOptions.querySelector('input:checked');
-    if (checked) {
-      checked.focus();
-    }
   }
 
-  function saveExpiry() {
+  async function saveExpiry() {
     const org = currentOrg();
     const days = checkedExpiryDays();
-    if (!EXPIRY_PRESET_DAYS.includes(days)) {
-      console.error('[manage-users] Invalid Pro expiration interval', days);
-      showToast(t('expiry.invalid'), 'error');
-      return;
+    els.expirySave.disabled = true;
+    try {
+      await withLoading(() => {
+        if (!EXPIRY_PRESETS.includes(days)) {
+          throw new Error(`Invalid Pro expiration interval: ${days}`);
+        }
+        expiryDaysByOrg.set(org.id, days);
+        toast.success(t('expiry.saved', { org: orgName(org), interval: intervalLabel(days) }));
+      });
+    } catch (error) {
+      console.error('[manage-users] Saving the Pro expiration interval failed', error);
+      toast.error(t('common.error'));
+    } finally {
+      els.expirySave.disabled = false;
+      closeModal(els.expiryModal);
+      render();
     }
-    expiryDaysByOrg.set(org.id, days);
-    closeModal(els.expiryModal);
-    renderExpiry(org);
-    showToast(t('expiry.saved', { org: orgName(org), interval: expiryLabel(days) }), 'success');
   }
 
-  /* ---------- rendering: license modal ---------- */
+  /* ---------- organization heading ---------- */
 
-  function quotaMeta(org, type) {
-    return t('licenseModal.quotaLeft', { left: Math.max(remaining(org, type), 0), total: quotaTotal(org, type) });
+  function renderOrgHeading() {
+    const org = currentOrg();
+    const name = orgName(org);
+    els.orgName.textContent = name;
+    els.orgName.classList.toggle('visually-hidden', isGlobal());
+    els.orgSelect.hidden = !isGlobal();
+    els.orgSelect.title = name;
+    els.orgSelect.innerHTML = ORGANIZATIONS.map((item) =>
+      `<option value="${item.id}"${item.id === org.id ? ' selected' : ''}>${escapeHtml(orgName(item))}</option>`
+    ).join('');
   }
 
-  function actionButton(type, action, disabled) {
-    const label = licenseLabel(type);
-    const isRevoke = action === ACTIONS.REVOKE;
-    const variant = isRevoke ? 'btn-outline-danger' : 'btn-primary';
-    // Visible text is just Assign/Revoke; aria-label keeps the license type for screen readers.
-    const ariaLabel = t(isRevoke ? 'licenseModal.revokeLabel' : 'licenseModal.assignLabel', { license: label });
-    const text = t(isRevoke ? 'licenseModal.revoke' : 'licenseModal.assign');
-    return `<button type="button" class="btn btn-sm ${variant}" data-license-action="${action}" data-type="${type}" aria-label="${escapeHtml(ariaLabel)}"${disabled ? ' disabled' : ''}>${escapeHtml(text)}</button>`;
+  /* ---------- users table ---------- */
+
+  function compareOne(a, b, sort) {
+    const direction = sort.order === SORT_ORDERS.ASC ? 1 : -1;
+    switch (sort.key) {
+      case SORT_KEYS.NAME:
+        return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }) * direction;
+      case SORT_KEYS.LICENSE:
+        return (LICENSE_RANK[a.license] - LICENSE_RANK[b.license]) * direction;
+      case SORT_KEYS.LAST_USE:
+        // Accounts that have never hosted sort last in either direction.
+        if (!a.lastUse && !b.lastUse) return 0;
+        if (!a.lastUse) return 1;
+        if (!b.lastUse) return -1;
+        return (a.lastUse.getTime() - b.lastUse.getTime()) * direction;
+      case SORT_KEYS.ACCOUNT_TYPE:
+        if (!a.accountType && !b.accountType) return 0;
+        if (!a.accountType) return 1;
+        if (!b.accountType) return -1;
+        return a.accountType.localeCompare(b.accountType, 'en', { sensitivity: 'base' }) * direction;
+      default:
+        console.error('[manage-users] Unknown sort key', sort.key);
+        return 0;
+    }
+  }
+
+  /** Each sort in priority order (the server's default is by name), then the account id. */
+  function sortUsers(users) {
+    const sorts = view.sorts.length ? view.sorts : [{ key: SORT_KEYS.NAME, order: SORT_ORDERS.ASC }];
+    return [...users].sort((a, b) => {
+      for (const sort of sorts) {
+        const result = compareOne(a, b, sort);
+        if (result !== 0) {
+          return result;
+        }
+      }
+      return Number(a.accountId) - Number(b.accountId);
+    });
+  }
+
+  function matchesSearch(user, term) {
+    if (!term) {
+      return true;
+    }
+    const value = term.toLowerCase();
+    return user.name.toLowerCase().includes(value)
+      || (user.nameTh || '').toLowerCase().includes(value)
+      || user.email.toLowerCase().includes(value);
+  }
+
+  function sortOf(key) {
+    const index = view.sorts.findIndex((sort) => sort.key === key);
+    return index === -1 ? null : { order: view.sorts[index].order, priority: index + 1 };
   }
 
   /**
-   * Shared Pool licenses (Temp. Pro, Large Meeting) last until the next Booking Center time slot boundary
-   * after they were assigned, e.g. assigned at 9:00 AM expires at 11:00 AM.
-   * @returns {{text: string, tone: string}}
+   * Each click steps a column through ascending → descending → off. A column that is not sorted
+   * yet joins as the lowest priority (at most three).
    */
-  function slotExpiryInfo(user, type) {
-    const assignedAt = user.assignedAt[type];
-    if (!assignedAt) {
-      return { text: t('licenseModal.expiresNextSlot'), tone: '' };
+  function toggleSort(key) {
+    const current = view.sorts.find((sort) => sort.key === key);
+    if (!current) {
+      view.sorts = [...view.sorts, { key, order: SORT_ORDERS.ASC }].slice(-MAX_SORTS);
+    } else if (current.order === SORT_ORDERS.ASC) {
+      view.sorts = view.sorts.map((sort) => (sort.key === key ? { key, order: SORT_ORDERS.DESC } : sort));
+    } else {
+      view.sorts = view.sorts.filter((sort) => sort.key !== key);
     }
-    const minutesLeft = Math.ceil((nextSlotBoundary(assignedAt).getTime() - mockNow().getTime()) / MINUTE_MS);
-    if (minutesLeft <= 0) {
-      return { text: t('licenseModal.expired'), tone: 'is-overdue' };
-    }
-    const tone = minutesLeft <= SLOT_EXPIRY_WARNING_MINUTES ? 'is-soon' : '';
-    const hours = Math.floor(minutesLeft / MINUTES_PER_HOUR);
-    const minutes = minutesLeft % MINUTES_PER_HOUR;
-    if (hours === 0) {
-      return { text: t('licenseModal.expiresInMin', { minutes }), tone };
-    }
-    return { text: t(minutes === 0 ? 'licenseModal.expiresInHours' : 'licenseModal.expiresInHm', { hours, minutes }), tone };
+    view.page = 1;
+    renderTable();
   }
 
-  /**
-   * "Expires in ..." for a held license, or null when the user does not hold it. Pro is counted from the
-   * user's last use (or the license's creation date if never used) plus the organization's expiration
-   * interval; Shared Pool licenses follow the time slots.
-   * @returns {{text: string, tone: string}|null}
-   */
-  function expiryInfo(org, user, type) {
-    if (!holdsLicense(user, type)) {
+  function sortLabel(key) {
+    const column = t(SORT_COLUMN_LABELS[key]);
+    const sort = sortOf(key);
+    if (!sort) {
+      return t('table.sortNone', { column });
+    }
+    const direction = t(sort.order === SORT_ORDERS.ASC ? 'table.sortAsc' : 'table.sortDesc');
+    return view.sorts.length > 1
+      ? t('table.sortStatePriority', { column, direction, priority: sort.priority })
+      : t('table.sortState', { column, direction });
+  }
+
+  /** Production SortIndicator.vue. */
+  function sortIndicatorHtml(sort) {
+    if (!sort) {
+      return icon('arrow-up-down', true);
+    }
+    const arrow = `<svg class="icon icon-sm sort-indicator-arrow${sort.order === SORT_ORDERS.ASC ? ' is-ascending' : ''}" aria-hidden="true"><use href="#i-chevron-down"></use></svg>`;
+    const priority = view.sorts.length > 1 ? `<span class="sort-priority">${sort.priority}</span>` : '';
+    return arrow + priority;
+  }
+
+  function renderSortHeaders() {
+    els.sortHeaders.forEach((header) => {
+      const key = header.dataset.sortHeader;
+      const sort = sortOf(key);
+      header.classList.toggle('is-sorted', Boolean(sort));
+      // aria-sort belongs on the primary sort column only.
+      if (sort && sort.priority === 1) {
+        header.setAttribute('aria-sort', sort.order === SORT_ORDERS.ASC ? 'ascending' : 'descending');
+      } else {
+        header.removeAttribute('aria-sort');
+      }
+      header.querySelector('[data-sort]').setAttribute('aria-label', sortLabel(key));
+      header.querySelector('[data-sort-indicator]').innerHTML = sortIndicatorHtml(sort);
+    });
+  }
+
+  function licenseBadges(user) {
+    const main = `<span class="badge badge-${user.license}">${escapeHtml(licenseLabel(user.license))}</span>`;
+    const largeMeeting = user.largeMeeting
+      ? `<span class="badge badge-largeMeeting">${escapeHtml(licenseLabel(LICENSES.LARGE_MEETING))}</span>`
+      : '';
+    return main + largeMeeting;
+  }
+
+  function renderRow(user) {
+    const name = displayName(user);
+    const lastUse = user.lastUse
+      ? `<span class="last-use">${escapeHtml(formatDate(user.lastUse))}</span>`
+      : `<span class="last-use is-never">${escapeHtml(t('manage.never'))}</span>`;
+    const ariaLabel = t('licenseModal.open', { name, license: licenseLabel(user.license) });
+    return `
+      <tr class="is-clickable" tabindex="0" aria-haspopup="dialog" aria-label="${escapeHtml(ariaLabel)}" data-user-id="${escapeHtml(user.id)}">
+        <td>
+          <div class="user-cell">
+            <span class="avatar avatar-sm" aria-hidden="true">${escapeHtml(initials(user.name))}</span>
+            <div>
+              <span class="user-name">${escapeHtml(name)}</span>
+              <span class="user-email">${escapeHtml(user.email)}</span>
+            </div>
+          </div>
+        </td>
+        <td class="col-account-type">
+          <span class="account-type">${escapeHtml(accountTypeOf(user))}</span>
+        </td>
+        <td class="col-last-use" data-label="${escapeHtml(t('table.lastUse'))}">${lastUse}</td>
+        <td>
+          <div class="license-cell">${licenseBadges(user)}</div>
+        </td>
+      </tr>`;
+  }
+
+  /** The CMU address a search term names, or null (production candidateEmail). */
+  function candidateEmail(term) {
+    const value = term.trim().toLowerCase();
+    const local = value.endsWith(CMU_EMAIL_DOMAIN) ? value.slice(0, -CMU_EMAIL_DOMAIN.length) : value;
+    if (local.includes('@') || !LOCAL_PART_PATTERN.test(local)) {
       return null;
     }
-    if (isCmuHeldType(type)) {
-      return slotExpiryInfo(user, type);
-    }
-    const interval = expiryDaysByOrg.get(org.id);
-    if (interval === EXPIRY_NEVER) {
-      return { text: t('licenseModal.expiresNever'), tone: '' };
-    }
-    // Counted from the last use, or from when the license was created if the user never used it.
-    const countedFrom = user.lastUse || user.licenseCreatedAt;
-    const expiresAt = new Date(countedFrom.getTime() + interval * DAY_MS);
-    const daysLeft = Math.round((expiresAt.getTime() - TODAY.getTime()) / DAY_MS);
-    if (daysLeft < 0) {
-      return { text: t('licenseModal.expired'), tone: 'is-overdue' };
-    }
-    const tone = daysLeft <= EXPIRY_WARNING_DAYS ? 'is-soon' : '';
-    if (daysLeft === 0) {
-      return { text: t('licenseModal.expiresToday'), tone };
-    }
-    return { text: t(daysLeft === 1 ? 'licenseModal.expiresOne' : 'licenseModal.expiresIn', { count: daysLeft }), tone };
+    return `${local}${CMU_EMAIL_DOMAIN}`;
   }
 
-  /** One row per license type with an Assign/Revoke button, or a read-only lock for CMU licenses. */
-  function renderLicenseAction(org, user, type) {
-    const isCurrent = holdsLicense(user, type);
-    const action = isCurrent ? ACTIONS.REVOKE : ACTIONS.ASSIGN;
-    const lock = lockReason(type);
-    const blocked = blockingQuota(org, user, type, action);
-    const readOnly = isCmuHeldType(type) && lock !== null;
+  function renderTable() {
+    const matches = sortUsers(usersByOrg.get(currentOrg().id).filter((user) => matchesSearch(user, view.appliedSearch)));
+    const totalPages = Math.max(1, Math.ceil(matches.length / view.pageSize));
+    view.page = Math.min(Math.max(1, view.page), totalPages);
+    const start = (view.page - 1) * view.pageSize;
 
-    let meta;
+    renderSortHeaders();
+    els.rows.innerHTML = matches.slice(start, start + view.pageSize).map(renderRow).join('');
+
+    const isEmpty = matches.length === 0;
+    els.empty.hidden = !isEmpty;
+    const email = isEmpty ? candidateEmail(view.appliedSearch) : null;
+    els.provision.hidden = !email;
+    els.provision.dataset.email = email || '';
+    els.provision.textContent = email ? t('provision.add', { email }) : '';
+
+    renderPagination(els.pagination, {
+      page: view.page,
+      pageSize: view.pageSize,
+      total: matches.length,
+      onChange: ({ page, pageSize }) => {
+        view.page = page;
+        view.pageSize = pageSize;
+        renderTable();
+      }
+    });
+  }
+
+  /** Runs on Enter or the search button only, never per keystroke. */
+  function applySearch() {
+    view.appliedSearch = els.search.value.trim();
+    view.page = 1;
+    renderTable();
+  }
+
+  /** Display name for a provisioned account: "somchai.k" -> "Somchai K". */
+  function nameFromEmail(email) {
+    return email.split('@')[0].split(/[._-]+/).filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }
+
+  /** Mock of production's "bring them in from the CMU directory" (POST /api/accounts/provision). */
+  async function provisionSearchedUser() {
+    const email = els.provision.dataset.email;
+    if (!email) {
+      return;
+    }
+    els.provision.disabled = true;
+    try {
+      await withLoading(() => {
+        if (!allUsers().some((user) => user.email === email)) {
+          const org = currentOrg();
+          provisionedCount += 1;
+          const name = nameFromEmail(email);
+          usersByOrg.get(org.id).push({
+            id: `${org.id}-new-${provisionedCount}`,
+            orgId: org.id,
+            accountId: String(PROVISIONED_ACCOUNT_ID_BASE + provisionedCount),
+            name,
+            nameTh: name,
+            email,
+            accountType: PROVISIONED_ACCOUNT_TYPE,
+            lastUse: null,
+            licenseCreatedAt: mockNow(),
+            license: LICENSES.BASIC,
+            largeMeeting: false,
+            assignedAt: {},
+            expiresAt: {},
+            usageLog: []
+          });
+        }
+        toast.success(t('provision.success', { email }));
+      });
+    } catch (error) {
+      console.error('[manage-users] Provisioning failed for', email, error);
+      toast.error(t('common.error'));
+    } finally {
+      els.provision.disabled = false;
+      render();
+    }
+  }
+
+  /* ---------- page ---------- */
+
+  function render() {
+    const access = hasAccess();
+    els.noPermission.hidden = access;
+    els.manage.hidden = !access;
+    if (!access) {
+      return;
+    }
+    if (!isGlobal()) {
+      view.orgId = ADMIN_ORG_ID;
+    }
+    document.title = `${t('menu.manageUsers')} · CMU ZOOM`;
+    renderOrgHeading();
+    renderQuotas();
+    renderExpiry();
+    renderTable();
+  }
+
+  /* ---------- license modal (production LicenseModal.vue) ---------- */
+
+  /** One row per assignable license, as production's `rows` computed. */
+  function licenseRows(user) {
+    const sharedPoolLocked = !isGlobal();
+    const expiries = expiriesOf(user);
+    return HELD_LICENSE_ORDER.map((slug) => {
+      const isCurrent = holds(user, slug);
+      const action = isCurrent ? ACTIONS.REVOKE : ACTIONS.ASSIGN;
+      const { used, total } = quotaFor(slug);
+      const isShared = SHARED_POOL_LICENSES.includes(slug);
+      // An org admin may manage Pro only; the shared pool is Global Admin's.
+      const lockReason = isShared && sharedPoolLocked ? t('licenseModal.managedByGlobal') : null;
+      // A shared-pool type with no configured quota cannot be assigned.
+      const unavailable = action === ACTIONS.ASSIGN && slug !== LICENSES.PRO && SHARED_POOL_QUOTAS[slug] === undefined;
+      // Emergency Pro is only added, never swapped in over Pro or Temporary Pro.
+      const emergencyBlocked = slug === LICENSES.EMERGENCY_PRO && action === ACTIONS.ASSIGN
+        && (user.license === LICENSES.PRO || user.license === LICENSES.TEMP_PRO);
+
+      let meta = '';
+      if (lockReason) {
+        meta = t(isCurrent ? 'licenseModal.assigned' : 'licenseModal.notAssigned');
+      } else if (unavailable) {
+        meta = t('licenseModal.notConfigured');
+      } else if (emergencyBlocked) {
+        meta = t('licenseModal.emergBlocked');
+      } else if (!isCurrent) {
+        meta = t('licenseModal.quotaLeft', { left: Math.max(0, total - used), total });
+      }
+
+      const quotaExhausted = action === ACTIONS.ASSIGN && total > 0 && used >= total;
+      const disabled = Boolean(lockReason) || unavailable || emergencyBlocked || quotaExhausted;
+      const expiry = isCurrent ? formatExpiry(expiries[slug]) : null;
+      return { slug, label: licenseLabel(slug), isCurrent, action, meta, expiry, lockReason, disabled };
+    });
+  }
+
+  function renderLicenseRow(row) {
+    const expiry = row.expiry
+      ? `<span class="license-action-expiry ${row.expiry.className}"${row.expiry.title ? ` title="${escapeHtml(row.expiry.title)}"` : ''}>${escapeHtml(row.expiry.text)}</span>`
+      : '';
     let control;
-    if (readOnly) {
-      meta = t(isCurrent ? 'licenseModal.assigned' : 'licenseModal.notAssigned');
+    if (row.lockReason) {
       control = `
         <span class="license-lock">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-lock"></use></svg>
-          ${escapeHtml(t(lock))}
+          ${icon('lock', true)}
+          ${escapeHtml(row.lockReason)}
         </span>`;
     } else {
-      // The highlighted row and its Revoke button already mark the current license, so only the
-      // licenses the user does not hold show how many are left.
-      meta = isCurrent ? '' : quotaMeta(org, type);
-      if (blocked && blocked !== type) {
-        meta = t(isCurrent ? 'licenseModal.needsReservedPro' : 'manage.overQuota', { license: licenseLabel(blocked) });
-      }
-      if (lock) {
-        meta = t(lock);
-      }
-      control = actionButton(type, action, lock !== null || blocked !== null);
+      const isRevoke = row.action === ACTIONS.REVOKE;
+      const ariaLabel = t(isRevoke ? 'licenseModal.revokeLabel' : 'licenseModal.assignLabel', { license: row.label });
+      control = `
+        <button type="button" class="btn btn-sm ${isRevoke ? 'btn-outline-danger' : 'btn-primary'}" data-license-action="${row.action}" data-type="${row.slug}"
+          aria-label="${escapeHtml(ariaLabel)}"${row.disabled ? ' disabled' : ''}>${escapeHtml(t(isRevoke ? 'licenseModal.revoke' : 'licenseModal.assign'))}</button>`;
     }
-
-    const expiry = expiryInfo(org, user, type);
-    const expiryLine = expiry
-      ? `<span class="license-action-expiry ${expiry.tone}">${escapeHtml(expiry.text)}</span>`
-      : '';
-
     return `
-      <div class="license-action${isCurrent ? ' is-current' : ''}">
+      <div class="license-action${row.isCurrent ? ' is-current' : ''}">
         <div class="license-action-info">
-          <span class="badge badge-${type}">${escapeHtml(licenseLabel(type))}</span>
-          ${meta ? `<span class="license-action-meta">${escapeHtml(meta)}</span>` : ''}
-          ${expiryLine}
+          <span class="badge badge-${row.slug}">${escapeHtml(row.label)}</span>
+          ${row.meta ? `<span class="license-action-meta">${escapeHtml(row.meta)}</span>` : ''}
+          ${expiry}
         </div>
         ${control}
       </div>`;
   }
 
   function renderUsageLog(user) {
-    const log = user.usageLog;
-    els.modalUsageCount.textContent = log.length === 1
+    const entries = usageUnavailable ? [] : user.usageLog;
+    els.modalUsageCount.textContent = entries.length === 1
       ? t('licenseModal.meetingCountOne')
-      : t('licenseModal.meetingCount', { count: log.length });
-    if (log.length === 0) {
-      els.modalUsage.innerHTML = `<p class="usage-empty">${escapeHtml(t('licenseModal.noUsage'))}</p>`;
+      : t('licenseModal.meetingCount', { count: entries.length });
+    if (entries.length === 0) {
+      const message = usageUnavailable ? t('usage.unavailable') : t('licenseModal.noUsage');
+      els.modalUsage.innerHTML = `<p class="empty-state">${escapeHtml(message)}</p>`;
       return;
     }
     els.modalUsage.innerHTML = `
@@ -471,17 +600,21 @@
         <thead>
           <tr>
             <th scope="col">${escapeHtml(t('usage.dateTime'))}</th>
-            <th scope="col" class="num">${escapeHtml(t('usage.duration'))}</th>
-            <th scope="col" class="num">${escapeHtml(t('usage.participants'))}</th>
+            <th scope="col">${escapeHtml(t('usage.duration'))}</th>
+            <th scope="col">${escapeHtml(t('usage.ended'))}</th>
           </tr>
         </thead>
         <tbody>
-          ${log.map((meeting) => `
+          ${entries.map((entry) => {
+            const minutes = typeof entry.minutes === 'number' ? entry.minutes : null;
+            const end = minutes === null ? null : new Date(entry.start.getTime() + minutes * MINUTE_MS);
+            return `
             <tr>
-              <td>${escapeHtml(formatDateTime(meeting.start))}</td>
-              <td class="num">${escapeHtml(t('usage.minutes', { count: meeting.minutes }))}</td>
-              <td class="num">${meeting.participants}</td>
-            </tr>`).join('')}
+              <td>${escapeHtml(formatDateTime(entry.start))}</td>
+              <td class="num">${minutes === null ? '—' : escapeHtml(t('usage.minutes', { count: minutes }))}</td>
+              <td class="num">${end ? escapeHtml(formatTime(end)) : '—'}</td>
+            </tr>`;
+          }).join('')}
         </tbody>
       </table>`;
   }
@@ -491,18 +624,12 @@
     if (!user) {
       return;
     }
-    const org = currentOrg();
     els.modalInitials.textContent = initials(user.name);
-    els.modalName.textContent = user.name;
+    els.modalName.textContent = displayName(user);
     els.modalEmail.textContent = user.email;
-    els.modalCurrent.innerHTML = `
-      <span class="badge badge-${user.license}">${escapeHtml(licenseLabel(user.license))}</span>
-      ${largeMeetingBubble(user)}`;
-    // Shared Pool rows are Global Admin's to manage; an org Admin only sees the ones the user holds (read-only).
-    const visibleTypes = LICENSE_TYPES.filter((type) => isGlobalAdmin() || !isCmuHeldType(type) || holdsLicense(user, type));
-    els.modalActions.innerHTML = visibleTypes.map((type) => renderLicenseAction(org, user, type)).join('');
+    els.modalCurrent.innerHTML = licenseBadges(user);
+    els.modalActions.innerHTML = licenseRows(user).map(renderLicenseRow).join('');
     renderUsageLog(user);
-
     if (focusType) {
       const target = els.modalActions.querySelector(`[data-type="${focusType}"]:not(:disabled)`);
       if (target) {
@@ -511,11 +638,10 @@
     }
   }
 
-  /* ---------- actions ---------- */
-
   function openLicenseModal(userId) {
     if (!findUser(userId)) {
       console.error('[manage-users] User not found for license modal', userId);
+      toast.error(t('common.error'));
       return;
     }
     view.modalUserId = userId;
@@ -523,193 +649,249 @@
     openModal(LICENSE_MODAL_ID);
   }
 
-  function assignLicense(user, type) {
-    const org = currentOrg();
-    const blocked = blockingQuota(org, user, type, ACTIONS.ASSIGN);
-    if (blocked) {
-      showToast(t('manage.overQuota', { license: licenseLabel(blocked) }), 'error');
-      return;
-    }
-    if (type === ADDON_LARGE_MEETING) {
-      user.largeMeeting = true;
-    } else {
-      // Pro and Temp. Pro are exclusive: assigning one replaces (and releases) the other.
-      user.license = type;
-      user.licenseCreatedAt = mockNow();
-      delete user.assignedAt[LICENSES.TEMP_PRO];
-    }
-    if (isCmuHeldType(type)) {
-      user.assignedAt[type] = mockNow();
-    }
-    showToast(t('manage.assigned', { license: licenseLabel(type), name: user.name }), 'success');
+  /* ---------- confirmation ---------- */
+
+  function pad(n) {
+    return String(n).padStart(2, '0');
   }
 
-  function revokeLicense(user, type) {
-    if (blockingQuota(currentOrg(), user, type, ACTIONS.REVOKE)) {
-      showToast(t('licenseModal.needsReservedPro'), 'error');
-      return;
-    }
-    if (type === ADDON_LARGE_MEETING) {
-      user.largeMeeting = false;
-      delete user.assignedAt[ADDON_LARGE_MEETING];
-    } else {
-      user.license = LICENSES.BASIC;
-      delete user.assignedAt[LICENSES.TEMP_PRO];
-    }
-    showToast(t('manage.revoked', { license: licenseLabel(type), name: user.name }), 'success');
+  function slotTimeLabel(slot) {
+    return {
+      start: `${pad(slot.startHour)}:${pad(slot.startMinute)}`,
+      end: `${pad(slot.endHour)}:${pad(slot.endMinute)}`
+    };
   }
 
-  /* ---------- assign/revoke confirmation ---------- */
-
-  /**
-   * For a Shared Pool assignment: the time slot it is given in and when it expires (the end of that
-   * slot, or the start of the next one outside booking hours).
-   */
-  function slotNote() {
-    const now = mockNow();
-    const expiresAt = nextSlotBoundary(now);
-    const minutes = now.getHours() * MINUTES_PER_HOUR + now.getMinutes();
-    const slot = TIME_SLOTS.find((item) =>
-      minutes >= item.startHour * MINUTES_PER_HOUR + item.startMinute && minutes < item.endHour * MINUTES_PER_HOUR + item.endMinute
-    );
-    if (!slot) {
-      return t('confirmLicense.slotNext', { time: formatTime(expiresAt) });
+  /** The slot a Temporary Pro / Large Meeting being assigned will end with (production describeTempProWindow). */
+  function describeSlotWindow(now) {
+    const slot = slotAt(now);
+    if (slot) {
+      return t('confirmLicense.slotCurrent', slotTimeLabel(slot));
     }
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), slot.startHour, slot.startMinute);
-    return t('confirmLicense.slotCurrent', { start: formatTime(start), end: formatTime(expiresAt) });
+    // Off-hours it lasts until the first slot of the next morning starts.
+    return t('confirmLicense.slotNext', { time: slotTimeLabel(TIME_SLOTS[0]).start });
   }
 
-  function renderConfirmModal() {
-    const pending = view.pendingAction;
+  function renderConfirm() {
+    const pending = view.pending;
     const user = pending && findUser(pending.userId);
     if (!user) {
       return;
     }
     const isRevoke = pending.action === ACTIONS.REVOKE;
-    const license = licenseLabel(pending.type);
-    // Pro replaces a Temp. Pro the user holds, which frees it for someone else.
-    const releasesTempPro = !isRevoke && pending.type === LICENSES.PRO && user.license === LICENSES.TEMP_PRO;
-    const message = [
-      t(isRevoke ? 'confirmLicense.revokeBody' : 'confirmLicense.assignBody', { license, name: user.name }),
-      releasesTempPro ? t('confirmLicense.releasesTempPro', { license: licenseLabel(LICENSES.TEMP_PRO) }) : ''
-    ].filter(Boolean).join(' ');
-    // The time slot goes on its own line (the body keeps line breaks, see .confirm-body).
-    const body = [message, !isRevoke && isCmuHeldType(pending.type) ? slotNote() : ''].filter(Boolean).join('\n');
+    const name = displayName(user);
+    const paragraphs = [
+      t(isRevoke ? 'confirmLicense.revokeBody' : 'confirmLicense.assignBody', { name, license: pending.label })
+    ];
+    const slotBooked = pending.slug === LICENSES.TEMP_PRO || pending.slug === LICENSES.LARGE_MEETING;
+    if (slotBooked && !isRevoke) {
+      paragraphs.push(pending.slotNote);
+    }
+    // Main licenses are mutually exclusive: assigning one releases the one held.
+    if (!isRevoke && pending.slug !== LICENSES.LARGE_MEETING && user.license !== LICENSES.BASIC && user.license !== pending.slug) {
+      paragraphs.push(t('confirmLicense.releasesTempPro', { license: licenseLabel(user.license) }));
+    }
 
     els.confirmIcon.classList.toggle('modal-icon-danger', isRevoke);
-    els.confirmTitle.textContent = t(isRevoke ? 'confirmLicense.revokeTitle' : 'confirmLicense.assignTitle', { license });
-    els.confirmBody.textContent = body;
+    els.confirmIcon.innerHTML = icon(isRevoke ? 'undo' : 'send');
+    els.confirmTitle.textContent = t(isRevoke ? 'confirmLicense.revokeTitle' : 'confirmLicense.assignTitle', { license: pending.label });
+    els.confirmBody.innerHTML = paragraphs.map((text) => `<p>${escapeHtml(text)}</p>`).join('');
     els.confirmButton.className = `btn ${isRevoke ? 'btn-danger' : 'btn-primary'}`;
     els.confirmButton.textContent = t(isRevoke ? 'licenseModal.revoke' : 'licenseModal.assign');
+    els.confirmButton.disabled = view.busy;
   }
 
-  function onModalAction(button) {
+  function ask(slug, action) {
     const user = view.modalUserId && findUser(view.modalUserId);
-    if (!user) {
-      console.error('[manage-users] License action without a selected user');
+    if (!user || !Object.values(ACTIONS).includes(action)) {
+      console.error('[manage-users] Invalid license action', slug, action);
       return;
     }
-    const { licenseAction, type } = button.dataset;
-    if (!Object.values(ACTIONS).includes(licenseAction)) {
-      console.error('[manage-users] Unknown license action', licenseAction);
-      return;
-    }
-    const lock = lockReason(type);
-    if (lock) {
-      showToast(t(lock), 'error');
-      return;
-    }
-    view.pendingAction = { userId: user.id, type, action: licenseAction };
-    renderConfirmModal();
+    view.pending = {
+      userId: user.id,
+      slug,
+      action,
+      label: licenseLabel(slug),
+      // Worked out when the confirmation opens, as production does.
+      slotNote: action === ACTIONS.ASSIGN ? describeSlotWindow(mockNow()) : ''
+    };
+    renderConfirm();
     openModal(CONFIRM_MODAL_ID);
     els.confirmButton.focus();
   }
 
-  function confirmModalAction() {
-    const pending = view.pendingAction;
-    const user = pending && findUser(pending.userId);
-    closeModal(els.confirmModal);
-    if (!user) {
-      console.error('[manage-users] Confirmed a license action without a valid user', pending);
-      return;
-    }
-    // The role may have changed while the confirmation was open, so check the lock again.
-    const lock = lockReason(pending.type);
-    if (lock) {
-      showToast(t(lock), 'error');
-      return;
-    }
-    if (pending.action === ACTIONS.ASSIGN) {
-      assignLicense(user, pending.type);
-    } else {
-      revokeLicense(user, pending.type);
-    }
-    render();
-    renderLicenseModal(pending.type);
+  /** An error whose message is shown to the person, like the server's `data.message`. */
+  function refusal(message) {
+    const error = new Error(message);
+    error.userMessage = message;
+    return error;
   }
 
-  function bindEvents() {
-    els.table.addEventListener('click', (event) => {
-      const sortButton = event.target.closest('[data-sort]');
-      if (sortButton) {
-        toggleSort(sortButton.dataset.sort);
+  /** Applies a confirmed change to the mock data, refusing what production's server would. */
+  function applyChange(user, pending) {
+    const { slug, action } = pending;
+    if (SHARED_POOL_LICENSES.includes(slug) && !isGlobal()) {
+      throw refusal(t('licenseModal.managedByGlobal'));
+    }
+    if (action === ACTIONS.REVOKE) {
+      if (slug === LICENSES.LARGE_MEETING) {
+        user.largeMeeting = false;
+        delete user.assignedAt[LICENSES.LARGE_MEETING];
+      } else {
+        delete user.assignedAt[user.license];
+        delete user.expiresAt[user.license];
+        user.license = LICENSES.BASIC;
       }
+      return;
+    }
+
+    const { used, total } = quotaFor(slug);
+    if (used >= total) {
+      throw refusal(t('manage.overQuota', { license: licenseLabel(slug) }));
+    }
+    const now = mockNow();
+    if (slug === LICENSES.LARGE_MEETING) {
+      // A Large Meeting holder with no main license takes a Reserved Pro.
+      const reserved = quotaFor(LICENSES.RESERVED_PRO);
+      if (user.license === LICENSES.BASIC && reserved.used >= reserved.total) {
+        throw refusal(t('manage.overQuota', { license: licenseLabel(LICENSES.RESERVED_PRO) }));
+      }
+      user.largeMeeting = true;
+      user.assignedAt[LICENSES.LARGE_MEETING] = now;
+      return;
+    }
+    if (slug === LICENSES.EMERGENCY_PRO && (user.license === LICENSES.PRO || user.license === LICENSES.TEMP_PRO)) {
+      throw refusal(t('licenseModal.emergBlocked'));
+    }
+    // Pro, Temporary Pro and Emergency Pro are exclusive: the one held is released.
+    delete user.assignedAt[user.license];
+    delete user.expiresAt[user.license];
+    user.license = slug;
+    if (slug === LICENSES.PRO) {
+      user.licenseCreatedAt = now;
+    } else if (slug === LICENSES.TEMP_PRO) {
+      user.assignedAt[LICENSES.TEMP_PRO] = now;
+    } else if (slug === LICENSES.EMERGENCY_PRO) {
+      user.assignedAt[LICENSES.EMERGENCY_PRO] = now;
+      user.expiresAt[LICENSES.EMERGENCY_PRO] = new Date(now.getTime() + EMERGENCY_PRO_DAYS * DAY_MS);
+    }
+  }
+
+  async function confirmPending() {
+    const pending = view.pending;
+    const user = pending && findUser(pending.userId);
+    if (!user || view.busy) {
+      return;
+    }
+    view.busy = true;
+    els.confirmButton.disabled = true;
+    try {
+      await withLoading(() => {
+        applyChange(user, pending);
+        toast.success(t(pending.action === ACTIONS.ASSIGN ? 'manage.assigned' : 'manage.revoked', {
+          license: pending.label,
+          name: displayName(user)
+        }));
+      });
+    } catch (error) {
+      console.error('[manage-users] License change failed', pending, error);
+      toast.error(error.userMessage || t('common.error'));
+    } finally {
+      view.busy = false;
+      els.confirmButton.disabled = false;
+      closeModal(els.confirmModal);
+      view.pending = null;
+      render();
+      renderLicenseModal(pending.slug);
+    }
+  }
+
+  /* ---------- events ---------- */
+
+  function bindEvents() {
+    els.sortHeaders.forEach((header) => {
+      header.querySelector('[data-sort]').addEventListener('click', () => toggleSort(header.dataset.sortHeader));
     });
 
     els.rows.addEventListener('click', (event) => {
-      const bubble = event.target.closest('[data-open-license]');
-      if (bubble) {
-        openLicenseModal(bubble.dataset.userId);
+      const row = event.target.closest('tr[data-user-id]');
+      if (row) {
+        openLicenseModal(row.dataset.userId);
       }
+    });
+    els.rows.addEventListener('keydown', (event) => {
+      const row = event.target.closest('tr[data-user-id]');
+      if (row && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openLicenseModal(row.dataset.userId);
+      }
+    });
+
+    els.quotaList.addEventListener('click', (event) => {
+      const item = event.target.closest('[data-pool-license]');
+      if (item) {
+        openPoolHolders(item.dataset.poolLicense);
+      }
+    });
+    els.quotaList.addEventListener('keydown', (event) => {
+      const item = event.target.closest('[data-pool-license]');
+      if (item && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        openPoolHolders(item.dataset.poolLicense);
+      }
+    });
+
+    els.searchForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      applySearch();
+    });
+    // The native clear (×) on a search input is an explicit reset, so apply it.
+    els.search.addEventListener('search', () => {
+      if (els.search.value === '') {
+        applySearch();
+      }
+    });
+    els.provision.addEventListener('click', provisionSearchedUser);
+
+    els.orgSelect.addEventListener('change', () => {
+      view.orgId = els.orgSelect.value;
+      view.page = 1;
+      render();
     });
 
     els.modalActions.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-license-action]');
-      if (button) {
-        onModalAction(button);
+      if (button && !button.disabled) {
+        ask(button.dataset.type, button.dataset.licenseAction);
       }
     });
-
-    els.confirmButton.addEventListener('click', confirmModalAction);
+    els.confirmButton.addEventListener('click', confirmPending);
     els.confirmModal.addEventListener('close', () => {
-      view.pendingAction = null;
+      if (!view.busy) {
+        view.pending = null;
+      }
     });
-
     els.modal.addEventListener('close', () => {
       const userId = view.modalUserId;
       view.modalUserId = null;
-      const bubble = userId && els.rows.querySelector(`[data-open-license][data-user-id="${userId}"]`);
-      if (bubble) {
-        bubble.focus();
+      const row = userId && els.rows.querySelector(`tr[data-user-id="${CSS.escape(userId)}"]`);
+      if (row) {
+        row.focus();
       }
     });
 
-    els.search.addEventListener('input', () => {
-      view.query = els.search.value;
-      renderTable(currentOrg());
-    });
-
-    els.orgSelect.addEventListener('change', () => {
-      view.orgId = els.orgSelect.value;
-      render();
-    });
-
-    els.expiryEdit.addEventListener('click', openExpiryModal);
+    els.expiryEdit.addEventListener('click', openExpiry);
     els.expirySave.addEventListener('click', saveExpiry);
-
-    els.expiryModal.addEventListener('close', () => {
-      els.expiryEdit.focus();
-    });
 
     document.addEventListener(EVENTS.LANG, () => {
       render();
       renderLicenseModal();
       if (els.confirmModal.open) {
-        renderConfirmModal();
+        renderConfirm();
       }
       if (els.expiryModal.open) {
         // Keep the unsaved selection while relabelling.
-        renderExpiryOptions(currentOrg(), checkedExpiryDays());
+        renderExpiryOptions(checkedExpiryDays());
       }
     });
     document.addEventListener(EVENTS.ROLE, () => {
@@ -728,11 +910,12 @@
       quotaList: '[data-quota-list]',
       orgName: '[data-org-name]',
       orgSelect: '[data-org-select]',
-      userCount: '[data-user-count]',
+      searchForm: '[data-search-form]',
       search: '[data-search]',
-      table: '.users-table',
       rows: '[data-user-rows]',
       empty: '[data-empty]',
+      provision: '[data-provision]',
+      pagination: '[data-users-pagination]',
       modal: `#${LICENSE_MODAL_ID}`,
       modalInitials: '[data-lm-initials]',
       modalName: '[data-lm-name]',
@@ -750,7 +933,6 @@
       expiryDesc: '[data-expiry-desc]',
       expiryEdit: '[data-expiry-edit]',
       expiryModal: `#${EXPIRY_MODAL_ID}`,
-      expiryOrg: '[data-expiry-org]',
       expiryOptions: '[data-expiry-options]',
       expirySave: '[data-expiry-save]'
     };
@@ -762,10 +944,17 @@
         }
         els[key] = el;
       });
+      els.sortHeaders = [...document.querySelectorAll('[data-sort-header]')];
       bindEvents();
       render();
     } catch (error) {
       console.error('[manage-users] Initialisation failed', error);
     }
+  });
+
+  // Read-only hooks for the prototype's own checks; not part of production.
+  window.ManageUsers = Object.freeze({
+    usersByOrg,
+    getView: () => ({ ...view, sorts: view.sorts.map((sort) => ({ ...sort })) })
   });
 })();
