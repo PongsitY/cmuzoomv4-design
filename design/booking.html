@@ -8,11 +8,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/vendor/driver.js/driver.css">
   <link rel="stylesheet" href="assets/css/styles.css">
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/mock-data.js"></script>
   <script src="assets/js/booking.js" defer></script>
+  <script src="assets/vendor/driver.js/driver.js.iife.js" defer></script>
+  <script src="assets/js/tours.js" defer></script>
 </head>
 <body data-demo-switcher data-page="booking">
   <!-- ===== Navbar (shared with profile.html / manage-users.html) ===== -->
@@ -39,10 +42,37 @@
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
           <span data-i18n="nav.terms">Terms of Use</span>
         </button>
-        <a class="nav-link" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
-          <span data-i18n="nav.guide">User Guide</span>
-        </a>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="nav-link" data-dropdown-toggle aria-expanded="false" aria-controls="guide-menu">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
+            <span data-i18n="nav.guide">User Guide</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+          </button>
+
+          <div class="menu guide-menu" id="guide-menu" data-dropdown-menu hidden>
+            <div class="menu-section">
+              <p class="guide-menu-heading" data-i18n="nav.guideTours">Page tours</p>
+              <button type="button" class="menu-item" data-start-tour="profile">
+                <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+                <span data-i18n="nav.tourProfile">Profile page tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="booking">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+                <span data-i18n="nav.tourBooking">Booking Center tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+                <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+                <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+              </button>
+            </div>
+            <div class="menu-section">
+              <a class="menu-item" href="guide.html">
+                <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+                <span data-i18n="nav.guideDocs">Read the User Guide</span>
+              </a>
+            </div>
+          </div>
+        </div>
       </nav>
 
       <div class="dropdown" data-dropdown>
@@ -79,10 +109,22 @@
               <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
               <span data-i18n="nav.terms">Terms of Use</span>
             </button>
-            <a class="menu-item" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
+            <a class="menu-item" href="guide.html">
               <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
               <span data-i18n="nav.guide">User Guide</span>
             </a>
+            <button type="button" class="menu-item" data-start-tour="profile">
+              <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+              <span data-i18n="nav.tourProfile">Profile page tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="booking">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.tourBooking">Booking Center tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+            </button>
           </div>
 
           <div class="menu-section">
@@ -121,7 +163,7 @@
 
     <div class="booking-grid">
       <!-- My bookings: skeleton, grouped list or empty state, rendered by booking.js. -->
-      <section class="card bookings-card" aria-labelledby="my-bookings-title">
+      <section class="card bookings-card" data-tour="my-bookings" aria-labelledby="my-bookings-title">
         <h2 id="my-bookings-title" class="card-title" data-i18n="booking.myBookings">My bookings</h2>
         <div data-my-bookings></div>
       </section>
@@ -130,7 +172,7 @@
         <h2 id="booking-form-title" class="card-title" data-i18n="booking.formTitle">Book a license</h2>
 
         <!-- Step 1: license -->
-        <div class="booking-step">
+        <div class="booking-step" data-tour="booking-license">
           <p class="booking-step-label">
             <span class="step-number">1</span>
             <span data-i18n="booking.step.license">Choose a license</span>
@@ -154,7 +196,7 @@
         </div>
 
         <!-- Step 2: day -->
-        <div class="booking-step">
+        <div class="booking-step" data-tour="booking-date">
           <p class="booking-step-label">
             <span class="step-number">2</span>
             <span data-i18n="booking.step.date">Choose an available day</span>
@@ -192,7 +234,7 @@
         </div>
 
         <!-- Step 4: details -->
-        <div class="booking-step">
+        <div class="booking-step" data-tour="booking-details">
           <p class="booking-step-label">
             <span class="step-number">4</span>
             <span data-i18n="booking.step.details">Add details</span>

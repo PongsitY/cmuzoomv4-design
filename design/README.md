@@ -25,6 +25,7 @@ Opening `design/index.html` directly from disk also works.
 | `booking.html` | `pages/booking.vue` | My bookings (In use now / Upcoming / Past) + Book a license in four steps (license, day, time slot(s), details) |
 | `manage-users.html` | `pages/manage-users.vue` | Quota bars, Pro expiration interval, org selector, search, multi-sort paginated user table, license modal |
 | `manage-admins.html` | `pages/manage-admins.vue` | Admin Console, Global Admin only: tabs Stats, Admin Management, Booked Licenses, Action Log |
+| `guide.html` | `pages/guide.vue` | User Guide: one card per page (what it is for, Take the tour, Open page), filtered by role |
 
 ### Landing `?error=` states
 
@@ -46,8 +47,10 @@ under the login button (`landing.error*` keys), anything else falls back to the 
 - **Login state:** "Login with CMU Account" (`data-login`) signs the mock user in and opens the profile;
   Logout (account menu, `data-logout`) returns to the landing page. Persists in `localStorage` (`cmuzoom.auth`).
 - **Navbar links:** Booking Center, Manage Users (admins only), Admin Console (Global Admin only), Terms of
-  Use (Zoom Pro Terms of Use modal), User Guide; the current page is highlighted. At 1080px and below they
-  collapse into the top of the account menu.
+  Use (Zoom Pro Terms of Use modal), User Guide menu; the current page is highlighted. At 1080px and below
+  they collapse into the top of the account menu.
+- **User Guide menu:** Page tours (Profile, Booking Center, Manage Users — the last for admins only) and
+  **Read the User Guide** (`guide.html`). The mobile account menu has the User Guide link plus the same tours.
 - **Account menu:** avatar + name + email, Edit Profile, language (EN/TH), theme (light/dark), Logout. The
   navbar shows the name next to the avatar (hidden at 420px and below).
 - **Demo view switcher** (bottom-left, profile + manage pages): User / Admin / Global Admin (default Admin).
@@ -59,6 +62,12 @@ under the login button (`landing.error*` keys), anything else falls back to the 
   - Global Admin: organization dropdown to switch between organizations.
 - **Loading:** pages show skeletons / a dimmed state for a few hundred ms to mimic production fetches;
   saving actions run behind the loading overlay (`App.withLoading`).
+- **Product tours** (`tours.js`, production `app/tours` + `useTour`): driver.js spotlight walkthroughs on
+  Profile, Booking Center and Manage Users, anchored to `data-tour="…"` attributes. A tour starts once
+  the page has settled (no skeleton / `aria-busy`, dialog or loading overlay) on the first visit
+  (localStorage `cmuzoom.tour.<id>`) or when opened with `?tour=<id>`; `[data-start-tour]` buttons replay
+  one from any page. Steps whose element is hidden are dropped (Request Pro for non-Basic users; Manage
+  Users for Users). Clear `cmuzoom.tour.*` to see first-visit tours again.
 - **Modals:** every modal has an "x" in the header. Information-only modals close with it alone; confirm
   and form modals keep **Cancel** next to their main action.
 - Theme, language and demo role persist in `localStorage` (`cmuzoom.*`). User/license/booking data is
@@ -264,6 +273,9 @@ assets/js/pool-holders.js    Pool Holders modal (Manage Users + Admin Console)
 assets/js/manage-admins.js   Admin Console tabs, usage summary, Pro quotas, admins
 assets/js/admin-bookings.js  Admin Console "Booked Licenses" tab
 assets/js/action-logs.js     Admin Console "Action Log" tab
+assets/js/tours.js           product tours (driver.js): definitions, first-visit / ?tour= start, replay
+assets/js/guide.js           User Guide page sections
+assets/vendor/driver.js/     driver.js 1.12.1 (MIT), same version as production
 ```
 
 ## Content sources
@@ -273,7 +285,8 @@ assets/js/action-logs.js     Admin Console "Action Log" tab
   `i18n.js`. "-" lines are the numbered conditions; "*" lines are the Notes box. `@tliccmu` links to LINE.
   `terms.3` and `terms.note3` (the per-organization Pro expiration interval) are **not** in that source
   file — they were added to document the rule, so the mismatch is deliberate, not a transcription gap.
-- **User Guide** (navbar + mobile menu): opens https://docs.tlic.cmu.ac.th/cmu-zoom in a new tab.
+- **User Guide** (`guide.html`) and tour text: production's `guide.*`, `tour.*` and `nav.tour*` strings. The
+  external docs link was dropped, as in production.
 
 ## Placeholders to replace
 

@@ -4087,3 +4087,217 @@ body:has(.page-centered) {
 [data-page="profile"] .license-box:only-child .license-footer {
   margin-top: var(--space-2xl);
 }
+
+/* ---------- User Guide menu, product tours, guide page (production app.css) ---------- */
+
+/*
+ * User Guide menu in the navbar: page tours plus the guide page. Reuses
+ * the account menu's .menu/.menu-item; only the width and heading are new.
+ */
+.guide-menu {
+  width: 260px;
+}
+
+/* No header above the first section here, so it needs no divider. */
+.guide-menu .menu-section:first-child {
+  border-top: 0;
+}
+
+.guide-menu-heading {
+  margin: 0;
+  padding: 6px 10px 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+}
+
+/*
+ * Product tours (driver.js). driver.css sets the layout; these overrides
+ * bring the popover onto the app's tokens so it follows light and dark themes.
+ * The popover renders in the top layer, above modals, toasts and the overlay.
+ */
+.driver-popover.tour-popover {
+  --driver-popover-font-family: var(--font-sans);
+
+  max-width: min(340px, calc(100vw - 32px));
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+
+.tour-popover .driver-popover-title {
+  padding-right: 24px;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.tour-popover .driver-popover-description {
+  font-size: var(--fs-base);
+  line-height: var(--lh-body);
+  color: var(--text-muted);
+}
+
+.tour-popover .driver-popover-close-btn {
+  color: var(--text-subtle);
+}
+
+.tour-popover .driver-popover-close-btn:hover,
+.tour-popover .driver-popover-close-btn:focus-visible {
+  color: var(--text);
+}
+
+.tour-popover .driver-popover-progress-text {
+  font-size: var(--fs-xs);
+  color: var(--text-subtle);
+}
+
+.tour-popover .driver-popover-footer-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-sm);
+  text-shadow: none;
+}
+
+.tour-popover .driver-popover-footer-btn:hover,
+.tour-popover .driver-popover-footer-btn:focus-visible {
+  background: var(--surface-2);
+}
+
+.tour-popover .driver-popover-next-btn {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.tour-popover .driver-popover-next-btn:hover,
+.tour-popover .driver-popover-next-btn:focus-visible {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.tour-popover .driver-popover-footer-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* The arrow is a border triangle: colour only the side that points out. */
+.tour-popover .driver-popover-arrow-side-left {
+  border-left-color: var(--surface);
+}
+
+.tour-popover .driver-popover-arrow-side-right {
+  border-right-color: var(--surface);
+}
+
+.tour-popover .driver-popover-arrow-side-top {
+  border-top-color: var(--surface);
+}
+
+.tour-popover .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .driver-popover.tour-popover,
+  .driver-overlay {
+    animation: none;
+    transition: none;
+  }
+}
+
+/*
+ * User Guide page (guide.html, production /guide). One card per page of the
+ * app, two columns on wide screens.
+ */
+.guide-header {
+  margin-bottom: var(--space-xl);
+}
+
+.guide-title {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-heading);
+}
+
+.guide-intro {
+  max-width: 64ch;
+  margin: 0;
+  color: var(--text-muted);
+  line-height: var(--lh-body);
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: var(--space-lg);
+  align-items: stretch;
+}
+
+.guide-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-xl);
+}
+
+.guide-section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.guide-section-head .card-title {
+  font-size: var(--fs-lg);
+}
+
+.guide-section-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.guide-audience {
+  margin-top: 2px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.guide-section-desc {
+  margin: 0;
+  color: var(--text);
+  line-height: var(--lh-body);
+}
+
+.guide-points {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+.guide-points li::marker {
+  color: var(--primary);
+}
+
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-top: auto;
+}

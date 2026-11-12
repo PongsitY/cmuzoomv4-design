@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User Guide · CMU ZOOM</title>
+  <link rel="icon" type="image/png" href="../images/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/vendor/driver.js/driver.css">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script src="assets/js/guide.js" defer></script>
+  <script src="assets/vendor/driver.js/driver.js.iife.js" defer></script>
+  <script src="assets/js/tours.js" defer></script>
+</head>
+<body data-demo-switcher data-page="guide">
+  <!-- ===== Navbar (shared with the other signed-in pages) ===== -->
+  <header class="navbar">
+    <div class="navbar-inner">
+      <a class="brand" href="profile.html" data-i18n-aria-label="nav.home">
+        <img src="../images/logo-tlic.png" alt="TLIC" width="200" height="85">
+      </a>
+
+      <nav class="nav-links" data-i18n-aria-label="nav.primary">
+        <a class="nav-link" href="booking.html">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+          <span data-i18n="nav.booking">Booking Center</span>
+        </a>
+        <a class="nav-link" href="manage-users.html" data-admin-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-users"></use></svg>
+          <span data-i18n="menu.manageUsers">Manage Users</span>
+        </a>
+        <a class="nav-link" href="manage-admins.html" data-global-only>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-shield"></use></svg>
+          <span data-i18n="menu.manageAdmins">Admin Console</span>
+        </a>
+        <button type="button" class="nav-link" data-modal-open="terms-modal">
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
+          <span data-i18n="nav.terms">Terms of Use</span>
+        </button>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="nav-link" data-dropdown-toggle aria-expanded="false" aria-controls="guide-menu">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
+            <span data-i18n="nav.guide">User Guide</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+          </button>
+
+          <div class="menu guide-menu" id="guide-menu" data-dropdown-menu hidden>
+            <div class="menu-section">
+              <p class="guide-menu-heading" data-i18n="nav.guideTours">Page tours</p>
+              <button type="button" class="menu-item" data-start-tour="profile">
+                <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+                <span data-i18n="nav.tourProfile">Profile page tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="booking">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+                <span data-i18n="nav.tourBooking">Booking Center tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+                <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+                <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+              </button>
+            </div>
+            <div class="menu-section">
+              <a class="menu-item" href="guide.html">
+                <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+                <span data-i18n="nav.guideDocs">Read the User Guide</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="dropdown" data-dropdown>
+        <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
+          <span class="avatar user-avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name" data-i18n="demo.userName">Anong Srisuk</span>
+          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+        </button>
+
+        <div class="menu" id="user-menu" data-dropdown-menu hidden>
+          <div class="menu-header">
+            <span class="avatar user-avatar avatar-lg" aria-hidden="true">AS</span>
+            <div>
+              <strong data-i18n="demo.userName">Anong Srisuk</strong>
+              <p class="menu-email">anong.s@cmu.ac.th</p>
+              <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
+            </div>
+          </div>
+
+          <div class="menu-section menu-mobile-only">
+            <a class="menu-item" href="booking.html">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.booking">Booking Center</span>
+            </a>
+            <a class="menu-item" href="manage-users.html" data-admin-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span data-i18n="menu.manageUsers">Manage Users</span>
+            </a>
+            <a class="menu-item" href="manage-admins.html" data-global-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <span data-i18n="menu.manageAdmins">Admin Console</span>
+            </a>
+            <button type="button" class="menu-item" data-modal-open="terms-modal">
+              <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+              <span data-i18n="nav.terms">Terms of Use</span>
+            </button>
+            <a class="menu-item" href="guide.html">
+              <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
+              <span data-i18n="nav.guide">User Guide</span>
+            </a>
+            <button type="button" class="menu-item" data-start-tour="profile">
+              <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+              <span data-i18n="nav.tourProfile">Profile page tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="booking">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.tourBooking">Booking Center tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+            </button>
+          </div>
+
+          <div class="menu-section">
+            <div class="menu-row">
+              <svg class="icon" aria-hidden="true"><use href="#i-globe"></use></svg>
+              <span data-i18n="menu.language">Language</span>
+              <div class="segmented" role="group" data-i18n-aria-label="menu.language">
+                <button type="button" data-set-lang="en">EN</button>
+                <button type="button" data-set-lang="th">TH</button>
+              </div>
+            </div>
+            <div class="menu-row">
+              <svg class="icon" aria-hidden="true"><use href="#i-moon"></use></svg>
+              <span data-i18n="menu.theme">Theme</span>
+              <div class="segmented" role="group" data-i18n-aria-label="menu.theme">
+                <button type="button" data-set-theme="light" data-i18n-aria-label="menu.themeLight"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-sun"></use></svg></button>
+                <button type="button" data-set-theme="dark" data-i18n-aria-label="menu.themeDark"><svg class="icon icon-sm" aria-hidden="true"><use href="#i-moon"></use></svg></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="menu-section">
+            <a class="menu-item menu-item-danger" href="index.html" data-logout>
+              <svg class="icon" aria-hidden="true"><use href="#i-log-out"></use></svg>
+              <span data-i18n="menu.logout">Logout</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== User Guide (production /guide) ===== -->
+  <main class="page guide-page">
+    <header class="guide-header">
+      <h1 class="guide-title" data-i18n="guide.title">User Guide</h1>
+      <p class="guide-intro" data-i18n="guide.intro"></p>
+    </header>
+
+    <!-- Section cards are rendered by guide.js. -->
+    <div class="guide-grid" data-guide-grid></div>
+  </main>
+
+  <!-- ===== Modals ===== -->
+  <dialog class="modal" id="terms-modal" aria-labelledby="terms-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg></span>
+        <h2 id="terms-title" data-i18n="terms.title">Zoom Pro Terms of Use</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- Content from "เงื่อนไขการใช้ ZOOM Pro.txt" plus the Pro expiration interval (terms.3 /
+             terms.note3, not in that file); text lives in i18n.js (terms.*). -->
+        <ol class="terms-list">
+          <li data-i18n="terms.1"></li>
+          <li data-i18n="terms.2"></li>
+          <li data-i18n="terms.3"></li>
+        </ol>
+        <div class="terms-notes">
+          <p class="terms-notes-title" data-i18n="terms.notesTitle">Notes</p>
+          <ul>
+            <li>
+              <span data-i18n="terms.note1"></span>
+              <a href="https://line.me/R/ti/p/@tliccmu" target="_blank" rel="noopener">@tliccmu</a>
+            </li>
+            <li data-i18n="terms.note2"></li>
+            <li data-i18n="terms.note3"></li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-modal-close data-i18n="terms.accept">I understand</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

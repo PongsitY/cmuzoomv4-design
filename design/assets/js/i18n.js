@@ -211,6 +211,60 @@
         saved: '{org}: Pro expiration interval set to {interval}.',
         title: 'Pro Expiration Interval'
       },
+      guide: {
+        title: 'User Guide',
+        intro: 'What each page of CMU Zoom is for. Take a page’s tour to see it step by step.',
+        openPage: 'Open page',
+        takeTour: 'Take the tour',
+        audience: {
+          all: 'All users',
+          admin: 'Admin',
+          global: 'Global Admin'
+        },
+        sections: {
+          profile: {
+            title: 'Profile',
+            desc: 'Your home page: your Zoom license, OneDrive recording sync and Zoom shortcuts.',
+            points: {
+              p1: 'See your current license, and how long a temporary one has left.',
+              p2: 'On Basic, request a Pro license from your organization’s quota.',
+              p3: 'Return a license early so someone else can use it.',
+              p4: 'Save Zoom cloud recordings to your CMU OneDrive automatically.',
+              p5: 'Join, start or schedule a meeting in Zoom.'
+            }
+          },
+          booking: {
+            title: 'Booking Center',
+            desc: 'Book a Temporary Pro or Large Meeting license for specific days and times.',
+            points: {
+              p1: 'Temporary Pro removes the 40-minute limit; Large Meeting allows up to 1000 participants.',
+              p2: 'Pick an available day, then one or more time slots.',
+              p3: 'Book for yourself or for someone else with a CMU account.',
+              p4: 'See your bookings, cancel upcoming ones, or free up a license in use.'
+            }
+          },
+          manageUsers: {
+            title: 'Manage Users',
+            desc: 'Manage the Zoom licenses of users in your organization.',
+            points: {
+              p1: 'See how much of your organization’s Pro quota is in use.',
+              p2: 'See how long a Pro license may go unused before it returns to the quota.',
+              p3: 'Search for users, and add people who are not in CMU Zoom yet.',
+              p4: 'Click a user to assign or revoke Pro and add-on licenses.'
+            }
+          },
+          adminConsole: {
+            title: 'Admin Console',
+            desc: 'University-wide administration, in four tabs.',
+            points: {
+              p1: 'Stats: usage summary, and each organization’s Pro quota, which you can edit.',
+              p2: 'Admin Management: add or revoke organization admins.',
+              p3: 'Booked Licenses: a calendar of every booking; cancel one and email the user.',
+              p4: 'Action Log: a record of changes made in the system.'
+            }
+          }
+        }
+      },
       landing: {
         errorAccountType: 'This type of CMU account cannot use CMU Zoom.',
         errorGeneric: 'Sign-in failed. Please try again.',
@@ -305,9 +359,14 @@
       nav: {
         booking: 'Booking Center',
         guide: 'User Guide',
+        guideDocs: 'Read the User Guide',
+        guideTours: 'Page tours',
         home: 'Go to profile',
         primary: 'Primary',
-        terms: 'Terms of Use'
+        terms: 'Terms of Use',
+        tourBooking: 'Booking Center tour',
+        tourManageUsers: 'Manage Users tour',
+        tourProfile: 'Profile page tour'
       },
       pagination: {
         next: 'Next page',
@@ -409,6 +468,67 @@
         note3: 'Each faculty/organization has its own admin, who sets that period — commonly 30 to 180 days, or never. An expired license returns to the organization’s quota; your own date is on your profile page.',
         notesTitle: 'Notes',
         title: 'Zoom Pro Terms of Use'
+      },
+      tour: {
+        close: 'Close tour',
+        done: 'Done',
+        next: 'Next',
+        prev: 'Back',
+        progress: '{current} of {total}',
+        booking: {
+          myBookings: {
+            title: 'Your bookings',
+            body: 'Bookings in use now, upcoming and past. Trash cancels an upcoming booking; the undo button frees a license you are using now.'
+          },
+          bookingLicense: {
+            title: 'Choose a license',
+            body: 'Temporary Pro removes the 40-minute limit and enables cloud recording. Large Meeting raises capacity to 1000 participants.'
+          },
+          bookingDate: {
+            title: 'Pick a day and time',
+            body: 'Choose an available day on the calendar, then one or more time slots below it. Full days and slots cannot be picked.'
+          },
+          bookingDetails: {
+            title: 'Add details and save',
+            body: 'Book for yourself or for someone else with a CMU account, give it a title, then save and confirm.'
+          }
+        },
+        manageUsers: {
+          quota: {
+            title: 'License quota',
+            body: 'How much of your organization’s Pro quota is in use.'
+          },
+          expiry: {
+            title: 'License duration',
+            body: 'How long a Pro license may go unused before it returns to the quota automatically.'
+          },
+          userSearch: {
+            title: 'Find a user',
+            body: 'Search by name or email, then press Enter. If someone is not in CMU Zoom yet, you can add them from here.'
+          },
+          usersTable: {
+            title: 'Assign licenses',
+            body: 'Click a user to open their license window, where you can assign or remove Pro and add-ons. Click a column header to sort.'
+          }
+        },
+        profile: {
+          profileCard: {
+            title: 'Your profile and license',
+            body: 'Your details and your current Zoom license. Licenses that expire show how long is left; Return gives one back to your organization early. Replay this tour any time from User Guide in the top bar.'
+          },
+          requestPro: {
+            title: 'Request Zoom Pro',
+            body: 'Basic meetings end after 40 minutes. Request Pro to remove the limit and enable cloud recording. It is assigned at once from your organization’s quota.'
+          },
+          recordingSync: {
+            title: 'Sync cloud recordings to OneDrive',
+            body: 'Turn this on to copy new Zoom cloud recordings to your CMU OneDrive automatically. A Microsoft sign-in window asks for your permission once.'
+          },
+          zoomPanel: {
+            title: 'Zoom panel',
+            body: 'Join a meeting, start one right now, or schedule one for later. Each opens Zoom in a new tab.'
+          }
+        }
       },
       usage: {
         dateTime: 'Date & time',
@@ -607,6 +727,60 @@
         saved: '{org}: ตั้งระยะเวลาหมดอายุสิทธิ์ Pro เป็น {interval} แล้ว',
         title: 'ระยะเวลาหมดอายุสิทธิ์ Pro'
       },
+      guide: {
+        title: 'คู่มือการใช้งาน',
+        intro: 'หน้าต่าง ๆ ของ CMU Zoom ใช้ทำอะไร เลือกการแนะนำของแต่ละหน้าเพื่อดูทีละขั้นตอน',
+        openPage: 'เปิดหน้า',
+        takeTour: 'เริ่มการแนะนำ',
+        audience: {
+          all: 'ผู้ใช้ทุกคน',
+          admin: 'Admin',
+          global: 'Global Admin'
+        },
+        sections: {
+          profile: {
+            title: 'โปรไฟล์',
+            desc: 'หน้าหลักของท่าน: สิทธิ์ Zoom การบันทึกคลาวด์ไปยัง OneDrive และทางลัดไปยัง Zoom',
+            points: {
+              p1: 'ดูสิทธิ์ปัจจุบัน และเวลาที่เหลือของสิทธิ์ชั่วคราว',
+              p2: 'ผู้ใช้ Basic ขอสิทธิ์ Pro จากโควตาของหน่วยงานได้',
+              p3: 'คืนสิทธิ์ก่อนกำหนดเพื่อให้ผู้อื่นใช้งานต่อได้',
+              p4: 'บันทึกไฟล์บันทึกคลาวด์ของ Zoom ไปยัง CMU OneDrive โดยอัตโนมัติ',
+              p5: 'เข้าร่วม เริ่ม หรือนัดหมายการประชุมใน Zoom'
+            }
+          },
+          booking: {
+            title: 'จองสิทธิ์ ZOOM',
+            desc: 'จองสิทธิ์ Pro ชั่วคราวหรือ Large Meeting ตามวันและเวลาที่ต้องการ',
+            points: {
+              p1: 'Pro ชั่วคราวยกเลิกการจำกัดเวลา 40 นาที Large Meeting รองรับผู้เข้าร่วมสูงสุด 1000 คน',
+              p2: 'เลือกวันที่ว่าง แล้วเลือกช่วงเวลาหนึ่งช่วงหรือมากกว่า',
+              p3: 'จองให้ตนเองหรือผู้อื่นที่มีบัญชี CMU',
+              p4: 'ดูการจองของท่าน ยกเลิกการจองที่จะมาถึง หรือคืนสิทธิ์ที่กำลังใช้งาน'
+            }
+          },
+          manageUsers: {
+            title: 'จัดการผู้ใช้',
+            desc: 'จัดการสิทธิ์ Zoom ของผู้ใช้ในหน่วยงานของท่าน',
+            points: {
+              p1: 'ดูจำนวนสิทธิ์ Pro ของหน่วยงานที่ใช้ไปแล้ว',
+              p2: 'ดูระยะเวลาที่สิทธิ์ Pro ไม่ถูกใช้งานได้ก่อนคืนเข้าโควตา',
+              p3: 'ค้นหาผู้ใช้ และเพิ่มผู้ที่ยังไม่มีใน CMU Zoom',
+              p4: 'คลิกที่ผู้ใช้เพื่อมอบหรือยกเลิกสิทธิ์ Pro และสิทธิ์เสริม'
+            }
+          },
+          adminConsole: {
+            title: 'Admin Console',
+            desc: 'การดูแลระบบระดับมหาวิทยาลัย แบ่งเป็นสี่แท็บ',
+            points: {
+              p1: 'Stats: สรุปการใช้งาน และโควตา Pro ของแต่ละหน่วยงานซึ่งแก้ไขได้',
+              p2: 'Admin Management: เพิ่มหรือยกเลิก Admin ของหน่วยงาน',
+              p3: 'Booked Licenses: ปฏิทินการจองทั้งหมด ยกเลิกการจองและแจ้งผู้ใช้ทางอีเมล',
+              p4: 'Action Log: บันทึกการเปลี่ยนแปลงในระบบ'
+            }
+          }
+        }
+      },
       landing: {
         errorAccountType: 'บัญชี CMU ประเภทนี้ไม่สามารถใช้งาน CMU Zoom ได้',
         errorGeneric: 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่อีกครั้ง',
@@ -701,9 +875,14 @@
       nav: {
         booking: 'จองสิทธิ์ ZOOM',
         guide: 'คู่มือการใช้งาน',
+        guideDocs: 'อ่านคู่มือการใช้งาน',
+        guideTours: 'แนะนำการใช้งานหน้าเว็บ',
         home: 'ไปที่หน้าโปรไฟล์',
         primary: 'เมนูหลัก',
-        terms: 'เงื่อนไขการใช้งาน'
+        terms: 'เงื่อนไขการใช้งาน',
+        tourBooking: 'แนะนำหน้าจองสิทธิ์',
+        tourManageUsers: 'แนะนำหน้าจัดการผู้ใช้',
+        tourProfile: 'แนะนำหน้าโปรไฟล์'
       },
       pagination: {
         next: 'หน้าถัดไป',
@@ -805,6 +984,67 @@
         note3: 'แต่ละคณะ/หน่วยงานมี Admin ของตนเองเป็นผู้กำหนดระยะเวลาดังกล่าว โดยทั่วไป 30-180 วัน หรือไม่มีกำหนดหมดอายุ สิทธิ์ที่หมดอายุจะถูกคืนเข้าโควตาของหน่วยงาน และท่านสามารถดูวันหมดอายุของตนเองได้ที่หน้าโปรไฟล์',
         notesTitle: 'หมายเหตุ',
         title: 'เงื่อนไขการใช้งาน Zoom Pro'
+      },
+      tour: {
+        close: 'ปิดการแนะนำ',
+        done: 'เสร็จสิ้น',
+        next: 'ถัดไป',
+        prev: 'ย้อนกลับ',
+        progress: '{current} จาก {total}',
+        booking: {
+          myBookings: {
+            title: 'การจองของท่าน',
+            body: 'การจองที่กำลังใช้งาน ที่จะมาถึง และที่ผ่านมา ปุ่มถังขยะใช้ยกเลิกการจองที่จะมาถึง ปุ่มย้อนกลับใช้คืนสิทธิ์ที่กำลังใช้งานอยู่'
+          },
+          bookingLicense: {
+            title: 'เลือกสิทธิ์',
+            body: 'Pro ชั่วคราวยกเลิกการจำกัดเวลา 40 นาทีและใช้การบันทึกคลาวด์ได้ Large Meeting เพิ่มจำนวนผู้เข้าร่วมได้สูงสุด 1000 คน'
+          },
+          bookingDate: {
+            title: 'เลือกวันและเวลา',
+            body: 'เลือกวันที่ว่างในปฏิทิน แล้วเลือกช่วงเวลาด้านล่างได้หนึ่งช่วงหรือมากกว่า วันและช่วงเวลาที่เต็มแล้วจะเลือกไม่ได้'
+          },
+          bookingDetails: {
+            title: 'กรอกรายละเอียดและบันทึก',
+            body: 'จองให้ตนเองหรือผู้อื่นที่มีบัญชี CMU ตั้งชื่อการจอง แล้วบันทึกและยืนยัน'
+          }
+        },
+        manageUsers: {
+          quota: {
+            title: 'โควตาสิทธิ์',
+            body: 'จำนวนสิทธิ์ Pro ของหน่วยงานที่ใช้ไปแล้ว'
+          },
+          expiry: {
+            title: 'ระยะเวลาของสิทธิ์',
+            body: 'ระยะเวลาที่สิทธิ์ Pro ไม่ถูกใช้งานได้ ก่อนคืนเข้าโควตาโดยอัตโนมัติ'
+          },
+          userSearch: {
+            title: 'ค้นหาผู้ใช้',
+            body: 'ค้นหาด้วยชื่อหรืออีเมล แล้วกด Enter หากยังไม่มีผู้ใช้นั้นใน CMU Zoom สามารถเพิ่มได้จากที่นี่'
+          },
+          usersTable: {
+            title: 'มอบสิทธิ์',
+            body: 'คลิกที่ผู้ใช้เพื่อเปิดหน้าต่างสิทธิ์ ซึ่งสามารถมอบหรือยกเลิกสิทธิ์ Pro และสิทธิ์เสริมได้ คลิกหัวคอลัมน์เพื่อเรียงลำดับ'
+          }
+        },
+        profile: {
+          profileCard: {
+            title: 'โปรไฟล์และสิทธิ์การใช้งาน',
+            body: 'ข้อมูลของท่านและสิทธิ์ Zoom ปัจจุบัน สิทธิ์ที่มีวันหมดอายุจะแสดงเวลาที่เหลือ ปุ่มคืนสิทธิ์ใช้คืนสิทธิ์ให้หน่วยงานก่อนกำหนด เปิดการแนะนำนี้อีกครั้งได้ทุกเมื่อจากเมนูคู่มือการใช้งานด้านบน'
+          },
+          requestPro: {
+            title: 'ขอสิทธิ์ Zoom Pro',
+            body: 'การประชุมแบบ Basic จำกัดเวลา 40 นาที ขอสิทธิ์ Pro เพื่อยกเลิกการจำกัดเวลาและใช้การบันทึกคลาวด์ได้ ระบบจะมอบสิทธิ์จากโควตาของหน่วยงานทันที'
+          },
+          recordingSync: {
+            title: 'บันทึกคลาวด์ไปยัง OneDrive',
+            body: 'เปิดเพื่อคัดลอกไฟล์บันทึกคลาวด์ของ Zoom ไปยัง CMU OneDrive ของท่านโดยอัตโนมัติ หน้าต่างลงชื่อเข้าใช้ Microsoft จะขออนุญาตเพียงครั้งเดียว'
+          },
+          zoomPanel: {
+            title: 'แผง Zoom',
+            body: 'เข้าร่วมการประชุม เริ่มการประชุมทันที หรือนัดหมายการประชุมล่วงหน้า แต่ละปุ่มจะเปิด Zoom ในแท็บใหม่'
+          }
+        }
       },
       usage: {
         dateTime: 'วันและเวลา',

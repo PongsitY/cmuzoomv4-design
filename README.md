@@ -3,7 +3,7 @@
 Clickable HTML/CSS/JS design prototype for the CMU ZOOM portal (Teaching and Learning Innovation Center,
 Chiang Mai University), kept in parity with the production Nuxt app as the basis for the User Guide.
 
-- `design/` — the prototype (landing, user profile, ZOOM booking center, manage users, Admin Console). See
+- `design/` — the prototype (landing, user profile, ZOOM booking center, manage users, Admin Console, User Guide). See
   [design/README.md](design/README.md).
 - `images/` — logos and background photos used by the pages.
 

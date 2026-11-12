@@ -8,12 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
+  <link rel="stylesheet" href="assets/vendor/driver.js/driver.css">
   <link rel="stylesheet" href="assets/css/styles.css">
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/mock-data.js"></script>
   <script src="assets/js/pool-holders.js" defer></script>
   <script src="assets/js/manage-users.js" defer></script>
+  <script src="assets/vendor/driver.js/driver.js.iife.js" defer></script>
+  <script src="assets/js/tours.js" defer></script>
 </head>
 <body data-demo-switcher data-page="manage-users">
   <!-- ===== Navbar (shared with profile.html) ===== -->
@@ -40,10 +43,37 @@
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-file-text"></use></svg>
           <span data-i18n="nav.terms">Terms of Use</span>
         </button>
-        <a class="nav-link" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
-          <span data-i18n="nav.guide">User Guide</span>
-        </a>
+        <div class="dropdown" data-dropdown>
+          <button type="button" class="nav-link" data-dropdown-toggle aria-expanded="false" aria-controls="guide-menu">
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-book"></use></svg>
+            <span data-i18n="nav.guide">User Guide</span>
+            <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
+          </button>
+
+          <div class="menu guide-menu" id="guide-menu" data-dropdown-menu hidden>
+            <div class="menu-section">
+              <p class="guide-menu-heading" data-i18n="nav.guideTours">Page tours</p>
+              <button type="button" class="menu-item" data-start-tour="profile">
+                <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+                <span data-i18n="nav.tourProfile">Profile page tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="booking">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+                <span data-i18n="nav.tourBooking">Booking Center tour</span>
+              </button>
+              <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+                <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+                <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+              </button>
+            </div>
+            <div class="menu-section">
+              <a class="menu-item" href="guide.html">
+                <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+                <span data-i18n="nav.guideDocs">Read the User Guide</span>
+              </a>
+            </div>
+          </div>
+        </div>
       </nav>
 
       <div class="dropdown" data-dropdown>
@@ -80,10 +110,22 @@
               <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
               <span data-i18n="nav.terms">Terms of Use</span>
             </button>
-            <a class="menu-item" href="https://docs.tlic.cmu.ac.th/cmu-zoom" target="_blank" rel="noopener">
+            <a class="menu-item" href="guide.html">
               <svg class="icon" aria-hidden="true"><use href="#i-book"></use></svg>
               <span data-i18n="nav.guide">User Guide</span>
             </a>
+            <button type="button" class="menu-item" data-start-tour="profile">
+              <svg class="icon" aria-hidden="true"><use href="#i-id-card"></use></svg>
+              <span data-i18n="nav.tourProfile">Profile page tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="booking">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+              <span data-i18n="nav.tourBooking">Booking Center tour</span>
+            </button>
+            <button type="button" class="menu-item" data-start-tour="manageUsers" data-admin-only>
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span data-i18n="nav.tourManageUsers">Manage Users tour</span>
+            </button>
           </div>
 
           <div class="menu-section">
@@ -131,12 +173,12 @@
 
     <div class="manage-grid" data-manage hidden>
       <div class="manage-side">
-        <aside class="card quota-card" aria-labelledby="quota-title">
+        <aside class="card quota-card" data-tour="quota" aria-labelledby="quota-title">
           <h2 id="quota-title" class="card-title" data-quota-title></h2>
           <div class="quota-list" data-quota-list></div>
         </aside>
 
-        <section class="card expiry-card" aria-labelledby="expiry-title">
+        <section class="card expiry-card" data-tour="expiry" aria-labelledby="expiry-title">
           <h2 id="expiry-title" class="card-title" data-i18n="expiry.title"></h2>
           <div class="expiry-row">
             <p class="expiry-value">
@@ -162,7 +204,7 @@
             <select id="org-select" class="select org-select" data-org-select hidden></select>
           </div>
 
-          <form class="field" role="search" data-search-form>
+          <form class="field" data-tour="user-search" role="search" data-search-form>
             <label class="visually-hidden" for="user-search" data-i18n="manage.search"></label>
             <input id="user-search" type="search" autocomplete="off" data-search data-i18n-placeholder="manage.search">
             <button type="submit" class="search-submit" data-i18n-aria-label="manage.searchSubmit" data-i18n-title="manage.searchSubmit">
@@ -171,7 +213,7 @@
           </form>
         </div>
 
-        <div class="table-scroll">
+        <div class="table-scroll" data-tour="users-table">
           <table class="users-table manage-users-table">
             <thead>
               <tr>
