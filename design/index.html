@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CMU ZOOM</title>
+  <title>Welcome to · CMU ZOOM</title>
   <link rel="icon" type="image/png" href="../images/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,6 +53,8 @@
             <svg class="icon" aria-hidden="true"><use href="#i-log-in"></use></svg>
             <span data-i18n="landing.login">Login with CMU Account</span>
           </a>
+          <!-- Sign-in failure from the OAuth callback (?error=…); filled by the script below. -->
+          <p class="field-error" role="alert" data-landing-error hidden></p>
           <p class="landing-note" data-i18n="landing.note">Sign in with your @cmu.ac.th account.</p>
         </div>
       </div>
@@ -61,5 +63,43 @@
       <p class="landing-footer" data-i18n="landing.footer">Teaching and Learning Innovation Center, Chiang Mai University</p>
     </section>
   </main>
+
+  <script>
+    'use strict';
+    // Production app/pages/index.vue: each ?error= reason has its own message; unknown -> generic.
+    (function () {
+      const ERROR_MESSAGES = Object.freeze({
+        'not-provisioned': 'landing.errorNotProvisioned',
+        'blocked-account-type': 'landing.errorAccountType',
+        inactive: 'landing.errorInactive',
+        'no-email': 'landing.errorGeneric',
+        'login-failed': 'landing.errorGeneric',
+        unavailable: 'landing.errorUnavailable'
+      });
+      const GENERIC_ERROR = 'landing.errorGeneric';
+      const TITLE_SUFFIX = ' · CMU ZOOM';
+
+      try {
+        const reason = new URLSearchParams(window.location.search).get('error');
+        const line = document.querySelector('[data-landing-error]');
+        if (reason !== null && line) {
+          // Set before app.js applies translations on DOMContentLoaded, so it follows the language.
+          line.dataset.i18n = Object.prototype.hasOwnProperty.call(ERROR_MESSAGES, reason)
+            ? ERROR_MESSAGES[reason]
+            : GENERIC_ERROR;
+          line.hidden = false;
+        }
+      } catch (error) {
+        console.error('[landing] Unable to read the sign-in error', error);
+      }
+
+      // Production title: "{landing.welcome} · CMU ZOOM".
+      const renderTitle = () => {
+        document.title = `${window.App.t('landing.welcome')}${TITLE_SUFFIX}`;
+      };
+      document.addEventListener('DOMContentLoaded', renderTitle);
+      document.addEventListener(window.App.EVENTS.LANG, renderTitle);
+    })();
+  </script>
 </body>
 </html>

@@ -1,505 +1,626 @@
 'use strict';
 
 /**
- * 3. ZOOM Booking Center — book a Temp. Pro or Large Meeting license (from the CMU Shared
- * Pool, see mock-data.js) for one day, in one or more time slots, then manage the
- * resulting bookings.
+ * 3. ZOOM Booking Center — mirrors production app/pages/booking.vue + BookingCalendar.vue.
  *
- * A booking is one day + one or more of the fixed 5.5-hour time slots; only one day can be
- * picked per booking. Anyone can book either license for any available day; saving assigns
- * it immediately (no admin approval) once the user confirms the summary modal. Step 4 collects
- * who the booking is for (the signed-in user, or someone else by CMU email), a required title
- * and an optional note. Daily capacity mirrors the Shared Pool quotas CMU holds
- * for everyone (Temp. Pro 3, Large Meeting 2) — one booking uses one day of that quota
- * regardless of how many time slots it covers. A day is simply disabled once it's unavailable
- * (full or already booked by the user); once a day is picked, its individual time slots are
- * disabled the same way when a slot itself is unavailable. Other users' bookings are generated
- * deterministically from the day/slot offset so there's a stable mix of open and full days/slots.
+ * Left: "My bookings", grouped into In use now (Free up now), Upcoming (Cancel) and Past
+ * (hidden behind "Show past bookings", then paged 3 at a time). Right: "Book a license" in four
+ * gated steps — license, day, time slot(s), details — then a confirm modal.
+ *
+ * Mock backend: the user's bookings come from MockData.createMyBookings(); availability per
+ * day/slot is the Shared Pool quota (MockData.SHARED_POOL_QUOTAS) minus other people's bookings
+ * (MockData.createOrgBookings) minus the user's own. Booking for someone else simulates the
+ * production 404 for people not in CMU Zoom yet: any address starting with "x" is unknown until
+ * added via "Check … from MIS", which fails only for "xnobody".
  *
  * All data is in-memory (resets on reload).
  */
 (function () {
-  const { LICENSES, EVENTS, t, formatDate, showToast, openModal, closeModal } = window.App;
-  const { SIGNED_IN_USER } = window.MockData;
+  const { EVENTS, t, formatDate, licenseLabel, toast, openModal, closeModal, withLoading } = window.App;
+  const MockData = window.MockData;
+  const { TIME_SLOTS, SHARED_POOL_QUOTAS, SIGNED_IN_USER, dateKey, parseDateKey, escapeHtml } = MockData;
 
-  const LICENSE_TEMP_PRO = LICENSES.TEMP_PRO;
-  const LICENSE_LARGE_MEETING = 'largeMeeting'; // matches ADDON_LARGE_MEETING / badge-largeMeeting in mock-data.js
-
-  // Shared Pool daily capacity — mirrors CMU's tempPro/largeMeeting quotas in mock-data.js (ORGANIZATIONS).
-  const DAILY_CAPACITY = Object.freeze({ [LICENSE_TEMP_PRO]: 3, [LICENSE_LARGE_MEETING]: 2 });
-
-  // Three fixed 5.5-hour slots covering the bookable day, 5:30 AM to 10:00 PM (defined in mock-data.js,
-  // where Manage Users also uses them to time the expiry of Temp. Pro / Large Meeting).
-  const { TIME_SLOTS } = window.MockData;
-
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const BOOKING_LEAD_DAYS = 1; // earliest bookable day is tomorrow
-  const BOOKING_WINDOW_MONTHS = 6; // bookable through the end of the 6th month from today
-  const NOTE_MAX_LENGTH = 200;
   const CMU_EMAIL_DOMAIN = '@cmu.ac.th';
-  // Local part only (the domain is a fixed suffix): letters, digits, dot, underscore, hyphen.
   const EMAIL_LOCAL_PATTERN = /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/i;
+  const NOTE_MAX = 200;
+  const BOOKING_WINDOW_MONTHS = 6; // through the end of the 6th month ahead
+  const PAST_PAGE_SIZE = 3;
+  const SKELETON_ROWS = 2;
+  // Simulated fetch times for the read skeleton (bookings) and the dimmed calendar (availability).
+  const BOOKINGS_LOAD_MS = 600;
+  const AVAILABILITY_LOAD_MS = 400;
+  // Simulated "not in CMU Zoom yet" (production 404): unknown prefix, and the one MIS lookup that fails.
+  const UNKNOWN_USER_PREFIX = 'x';
+  const MIS_MISSING_LOCAL_PART = 'xnobody';
   const BOOK_FOR = Object.freeze({ SELF: 'self', OTHER: 'other' });
+  const GROUPS = Object.freeze(['current', 'upcoming', 'past']);
   const CONFIRM_MODAL_ID = 'confirm-booking-modal';
   const CANCEL_MODAL_ID = 'cancel-booking-modal';
-  // Same locale mapping app.js uses internally for Intl formatting, kept here since it isn't exported.
   const DATE_LOCALES = Object.freeze({ en: 'en-GB', th: 'th-TH' });
-  // Fixed "today" — matches mock-data.js's REFERENCE_DATE so the demo data stays consistent
-  // across pages and stable between visits.
-  const REFERENCE_DATE = new Date(2026, 8, 14);
 
-  function addDays(date, days) {
-    const result = new Date(date);
-    result.setDate(result.getDate() + days);
-    return result;
-  }
+  /* ---------- booking window (tomorrow .. end of the 6th month ahead) ---------- */
 
-  function addMonths(date, months) {
-    return new Date(date.getFullYear(), date.getMonth() + months, 1);
-  }
+  const NOW = MockData.mockNow();
+  const WINDOW_START = dateKey(new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() + 1));
+  // Day 0 of month+7 is the last day of month+6.
+  const WINDOW_END = dateKey(new Date(NOW.getFullYear(), NOW.getMonth() + BOOKING_WINDOW_MONTHS + 1, 0));
 
-  function dateKey(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
+  /* ---------- helpers ---------- */
 
-  function parseDateKey(key) {
-    const [year, month, day] = key.split('-').map(Number);
-    return new Date(year, month - 1, day);
-  }
-
-  const WINDOW_START = addDays(REFERENCE_DATE, BOOKING_LEAD_DAYS);
-  // Last day of the 6th month from today (e.g. today in September -> end of March).
-  const WINDOW_END = new Date(REFERENCE_DATE.getFullYear(), REFERENCE_DATE.getMonth() + BOOKING_WINDOW_MONTHS + 1, 0);
-
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function locale() {
+  function intlLocale() {
     return DATE_LOCALES[window.App.getLang()] || DATE_LOCALES.en;
   }
 
-  function licenseLabel(license) {
-    return license === LICENSE_TEMP_PRO ? t('booking.tempProLabel') : t('license.largeMeeting');
+  function monthKey(date) {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  /** Localized "h:mm AM/PM"-style clock time for a fixed hour/minute (locale decides the exact format). */
-  function formatClock(hour, minute) {
-    const reference = new Date(2000, 0, 1, hour, minute);
-    return new Intl.DateTimeFormat(locale(), { hour: 'numeric', minute: '2-digit' }).format(reference);
+  function startOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
   }
 
-  function timeSlotById(id) {
-    return TIME_SLOTS.find((slot) => slot.id === id);
+  function formatDay(key) {
+    return formatDate(parseDateKey(key));
   }
 
-  function timeSlotLabel(slot) {
-    return `${formatClock(slot.startHour, slot.startMinute)} – ${formatClock(slot.endHour, slot.endMinute)}`;
+  function clock(hour, minute) {
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
 
-  /** Chronological order, regardless of the order slots were selected in. */
-  function sortSlotIds(ids) {
+  /** Production slotLabel(): fixed "05:30 – 11:00" strings, not locale-formatted. */
+  function slotLabel(slotId) {
+    const slot = TIME_SLOTS.find((item) => item.id === slotId);
+    if (!slot) {
+      console.error('[booking] Unknown time slot', slotId);
+      return slotId;
+    }
+    return `${clock(slot.startHour, slot.startMinute)} – ${clock(slot.endHour, slot.endMinute)}`;
+  }
+
+  /** Chronological order, regardless of the order slots were picked in. */
+  function orderSlots(ids) {
     return TIME_SLOTS.filter((slot) => ids.includes(slot.id)).map((slot) => slot.id);
   }
 
-  /* ---------- mock "other users" availability ---------- */
-
-  function dayIndex(key) {
-    return Math.round((parseDateKey(key) - WINDOW_START) / DAY_MS);
+  function icon(name) {
+    return `<svg class="icon icon-sm" aria-hidden="true"><use href="#i-${name}"></use></svg>`;
   }
 
-  /** Deterministic count of other users already booked on this day, for the given license. */
-  function othersBooked(key, license) {
-    const capacity = DAILY_CAPACITY[license];
-    return dayIndex(key) % (capacity + 1);
+  /* ---------- mock backend ---------- */
+
+  const bookings = MockData.createMyBookings(NOW);
+  let nextBookingId = Math.max(0, ...bookings.map((booking) => booking.id)) + 1;
+  const provisionedEmails = new Set();
+
+  /** Other people's bookings per `license|dateKey|slot`, for every month of the booking window. */
+  const othersBySlot = (function buildOthers() {
+    const counts = new Map();
+    try {
+      const usersByOrg = MockData.createUsersByOrg();
+      const end = parseDateKey(WINDOW_END);
+      for (let month = startOfMonth(parseDateKey(WINDOW_START)); month <= end; month = new Date(month.getFullYear(), month.getMonth() + 1, 1)) {
+        MockData.createOrgBookings(usersByOrg, month)
+          // The user's own bookings are counted live from `bookings` instead.
+          .filter((row) => !String(row.id).startsWith('my-'))
+          .forEach((row) => {
+            const key = `${row.license}|${row.dateKey}|${row.slot}`;
+            counts.set(key, (counts.get(key) || 0) + 1);
+          });
+      }
+    } catch (error) {
+      console.error('[booking] Unable to build availability', error);
+    }
+    return counts;
+  })();
+
+  /** Licenses still free in one slot (production DayAvailability.slots[].available). */
+  function slotAvailable(license, key, slotId) {
+    if (!license || key < WINDOW_START || key > WINDOW_END) {
+      return 0;
+    }
+    const others = othersBySlot.get(`${license}|${key}|${slotId}`) || 0;
+    const mine = bookings.filter((b) => b.license === license && b.dateKey === key && b.slots.includes(slotId)).length;
+    return (SHARED_POOL_QUOTAS[license] || 0) - others - mine;
   }
 
-  /** Deterministic count of other users already booked in this specific time slot. */
-  function othersBookedForSlot(key, license, slotId) {
-    const capacity = DAILY_CAPACITY[license];
-    const slotIndex = TIME_SLOTS.findIndex((slot) => slot.id === slotId);
-    return (dayIndex(key) + slotIndex) % (capacity + 1);
+  function isDayFull(license, key) {
+    return TIME_SLOTS.every((slot) => slotAvailable(license, key, slot.id) <= 0);
   }
 
-  function isSlotFull(key, license, slotId) {
-    return othersBookedForSlot(key, license, slotId) >= DAILY_CAPACITY[license];
+  function isInCmuZoom(email) {
+    return !email.startsWith(UNKNOWN_USER_PREFIX) || provisionedEmails.has(email);
   }
 
   /* ---------- state ---------- */
 
-  // The signed-in demo user's own bookings. Seeded with one of each license so the list isn't empty.
-  let nextBookingId = 1;
-  const bookings = [
-    { id: nextBookingId++, license: LICENSE_TEMP_PRO, dateKey: dateKey(addDays(WINDOW_START, 5)), slots: ['midday'], title: 'Faculty seminar', bookedFor: null, note: '' },
-    { id: nextBookingId++, license: LICENSE_LARGE_MEETING, dateKey: dateKey(addDays(WINDOW_START, 10)), slots: ['morning', 'evening'], title: 'Orientation for new students', bookedFor: 'somchai.k@cmu.ac.th', note: '' }
-  ];
-
   const view = {
+    bookingsLoading: true,
+    availabilityLoading: false,
     license: null,
     selectedDate: null,
-    selectedSlots: new Set(),
-    calendarMonth: new Date(WINDOW_START.getFullYear(), WINDOW_START.getMonth(), 1),
+    selectedSlots: [],
+    cursor: startOfMonth(parseDateKey(WINDOW_START)),
     bookFor: BOOK_FOR.SELF,
-    // Only show the email error once the user has typed something.
     emailTouched: false,
-    cancelBookingId: null
+    missingEmail: null,
+    provisioning: false,
+    saving: false,
+    showPast: false,
+    pastLimit: PAST_PAGE_SIZE,
+    pendingCancel: null,
+    pendingRelease: false,
+    cancelling: false
   };
 
   const els = {};
 
-  function userBooking(key, license) {
-    return bookings.find((booking) => booking.dateKey === key && booking.license === license);
+  /* ---------- my bookings ---------- */
+
+  function firstStart(booking) {
+    return Math.min(...booking.windows.map((w) => w.startAt.getTime()));
   }
 
-  /** Licenses still free on this day for a new booking (negative once over-booked, but that can't happen here). */
-  function remaining(key, license) {
-    return DAILY_CAPACITY[license] - othersBooked(key, license) - (userBooking(key, license) ? 1 : 0);
+  function lastEnd(booking) {
+    return Math.max(...booking.windows.map((w) => w.endAt.getTime()));
   }
 
-  /* ---------- rendering: calendar ---------- */
-
-  function isSameMonth(a, b) {
-    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+  function bookingGroups() {
+    const now = MockData.mockNow();
+    const groups = { current: [], upcoming: [], past: [] };
+    bookings.forEach((booking) => groups[MockData.bookingPhase(booking, now)].push(booking));
+    groups.current.sort((a, b) => firstStart(a) - firstStart(b));
+    groups.upcoming.sort((a, b) => firstStart(a) - firstStart(b));
+    // Most recent first, so the collapsed list shows the latest past bookings.
+    groups.past.sort((a, b) => b.dateKey.localeCompare(a.dateKey) || lastEnd(b) - lastEnd(a));
+    return groups;
   }
 
-  function renderWeekdayHeaders() {
-    const formatter = new Intl.DateTimeFormat(locale(), { weekday: 'short' });
-    // 1 Jan 2023 is a Sunday; used only to read localized weekday abbreviations in order.
-    const referenceSunday = new Date(2023, 0, 1);
-    const labels = Array.from({ length: 7 }, (_, i) => formatter.format(addDays(referenceSunday, i)));
-    els.calWeekdays.innerHTML = labels.map((label) => `<span>${escapeHtml(label)}</span>`).join('');
+  function renderSkeleton() {
+    const row = `
+      <div class="booking-item" aria-hidden="true">
+        <div class="booking-item-license"><span class="skeleton skeleton-pill" style="width: 96px" aria-hidden="true"></span></div>
+        <span class="skeleton skeleton-circle" style="width: 28px; height: 28px" aria-hidden="true"></span>
+        <div class="booking-item-body"><span class="skeleton skeleton-line" style="width: 70%; height: 14px" aria-hidden="true"></span></div>
+        <div class="booking-item-when">
+          <span class="skeleton skeleton-line" style="width: 30%; height: 10px" aria-hidden="true"></span>
+          <span class="skeleton skeleton-line" style="width: 40%; height: 10px" aria-hidden="true"></span>
+        </div>
+      </div>`;
+    return `<div class="booking-list" aria-busy="true">${row.repeat(SKELETON_ROWS)}</div>`;
   }
 
-  function renderDayButton(date) {
-    const key = dateKey(date);
-    if (date < WINDOW_START || date > WINDOW_END) {
-      return `<button type="button" class="calendar-day" disabled tabindex="-1"><span aria-hidden="true">${date.getDate()}</span></button>`;
+  function renderActionButton(group, booking) {
+    if (group === 'current') {
+      const label = escapeHtml(t('releaseBooking.action'));
+      return `<button type="button" class="icon-button booking-item-cancel" aria-haspopup="dialog" aria-label="${label}" title="${label}" data-cancel-booking="${booking.id}" data-release>${icon('undo')}</button>`;
     }
+    if (group === 'upcoming') {
+      const label = escapeHtml(t('booking.cancel'));
+      return `<button type="button" class="icon-button booking-item-cancel" aria-haspopup="dialog" aria-label="${label}" title="${label}" data-cancel-booking="${booking.id}">${icon('trash')}</button>`;
+    }
+    return '';
+  }
 
-    const booked = Boolean(userBooking(key, view.license));
-    const full = !booked && remaining(key, view.license) <= 0;
-    const disabled = booked || full;
-    const selected = !disabled && key === view.selectedDate;
-    const stateClass = booked ? ' is-booked' : '';
-    // Available days need no extra label; disabled ones say why, for screen reader users.
-    const ariaLabel = disabled ? `${formatDate(date)} · ${booked ? t('booking.booked') : t('booking.full')}` : formatDate(date);
-    const bookedLabel = booked ? `<span class="calendar-day-label" aria-hidden="true">${escapeHtml(t('booking.booked'))}</span>` : '';
-
+  function renderBookingItem(group, booking) {
+    const past = group === 'past';
+    const slots = orderSlots(booking.slots).map(slotLabel).join(', ');
     return `
-      <button type="button" class="calendar-day${stateClass}" data-day="${key}" aria-pressed="${selected}" aria-label="${escapeHtml(ariaLabel)}"${disabled ? ' disabled' : ''}>
-        <span aria-hidden="true">${date.getDate()}</span>
-        ${bookedLabel}
-      </button>`;
+      <article class="booking-item${past ? ' booking-item-past' : ''}"${past ? ' aria-disabled="true"' : ''}>
+        <span class="badge booking-item-license badge-${booking.license}">${escapeHtml(licenseLabel(booking.license))}</span>
+        ${renderActionButton(group, booking)}
+        <div class="booking-item-body">
+          <p class="booking-item-title">${escapeHtml(booking.title)}</p>
+        </div>
+        <div class="booking-item-when">
+          <p class="booking-item-date">${escapeHtml(formatDay(booking.dateKey))}</p>
+          <p class="booking-item-slots">${escapeHtml(slots)}</p>
+        </div>
+      </article>`;
+  }
+
+  function renderGroup(group, groups) {
+    let html = '';
+    if (group === 'past' && groups.past.length) {
+      const label = view.showPast ? t('booking.hidePast') : t('booking.showPast', { count: groups.past.length });
+      html += `<button type="button" class="link-button booking-show-more" aria-expanded="${view.showPast}" aria-controls="booking-group-past-section" data-toggle-past>${escapeHtml(label)}</button>`;
+    }
+    if (!groups[group].length || (group === 'past' && !view.showPast)) {
+      return html;
+    }
+    const visible = group === 'past' ? groups.past.slice(0, view.pastLimit) : groups[group];
+    const hidden = group === 'past' ? Math.max(0, groups.past.length - view.pastLimit) : 0;
+    const more = hidden
+      ? `<button type="button" class="link-button booking-show-more" data-show-more-past>${escapeHtml(t('booking.showMore', { count: hidden }))}</button>`
+      : '';
+    return `${html}
+      <section id="booking-group-${group}-section" class="booking-group booking-group-${group}" aria-labelledby="booking-group-${group}">
+        <h3 id="booking-group-${group}" class="booking-group-label">${escapeHtml(t(`booking.${group}`))}</h3>
+        ${visible.map((booking) => renderBookingItem(group, booking)).join('')}
+        ${more}
+      </section>`;
+  }
+
+  function renderMyBookings() {
+    if (view.bookingsLoading) {
+      els.myBookings.innerHTML = renderSkeleton();
+      return;
+    }
+    if (!bookings.length) {
+      els.myBookings.innerHTML = `
+        <div class="empty-state">
+          <svg class="icon" aria-hidden="true"><use href="#i-calendar-check"></use></svg>
+          <p>${escapeHtml(t('booking.empty'))}</p>
+        </div>`;
+      return;
+    }
+    const groups = bookingGroups();
+    const noUpcoming = !groups.current.length && !groups.upcoming.length
+      ? `<p class="booking-item-note">${escapeHtml(t('booking.noUpcoming'))}</p>`
+      : '';
+    els.myBookings.innerHTML = `<div class="booking-list">${noUpcoming}${GROUPS.map((group) => renderGroup(group, groups)).join('')}</div>`;
+  }
+
+  /* ---------- step 2: calendar (BookingCalendar.vue) ---------- */
+
+  function bookedDates() {
+    return bookings.filter((b) => b.license === view.license).map((b) => b.dateKey);
+  }
+
+  function dayLabel(key) {
+    return new Intl.DateTimeFormat(intlLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(parseDateKey(key));
+  }
+
+  function renderDayButton(year, month, day, booked) {
+    const key = dateKey(new Date(year, month, day));
+    const isBooked = booked.includes(key);
+    const outOfWindow = key < WINDOW_START || key > WINDOW_END;
+    const full = Boolean(view.license) && !outOfWindow && isDayFull(view.license, key);
+    const disabled = outOfWindow || full || isBooked || !view.license;
+    const label = isBooked
+      ? `${dayLabel(key)} · ${t('booking.booked')}`
+      : full ? `${dayLabel(key)} · ${t('booking.full')}` : dayLabel(key);
+    const bookedLabel = isBooked
+      ? `<span class="calendar-day-label" aria-hidden="true">${escapeHtml(t('booking.booked'))}</span>`
+      : '';
+    return `<button type="button" class="calendar-day${isBooked ? ' is-booked' : ''}" data-day="${key}"${disabled ? ' disabled' : ''} aria-pressed="${key === view.selectedDate}" aria-label="${escapeHtml(label)}"><span aria-hidden="true">${day}</span>${bookedLabel}</button>`;
   }
 
   function renderCalendar() {
     const hasLicense = Boolean(view.license);
-    els.calendar.setAttribute('aria-disabled', String(!hasLicense));
     els.pickLicenseHint.hidden = hasLicense;
+    els.calendar.setAttribute('aria-disabled', String(!hasLicense));
+    els.availabilityRegion.classList.toggle('is-loading', view.availabilityLoading);
+    els.availabilityRegion.setAttribute('aria-busy', String(view.availabilityLoading));
 
-    const monthDate = view.calendarMonth;
-    els.calTitle.textContent = new Intl.DateTimeFormat(locale(), { month: 'long', year: 'numeric' }).format(monthDate);
-    els.calPrev.disabled = !hasLicense || isSameMonth(monthDate, WINDOW_START);
-    els.calNext.disabled = !hasLicense || isSameMonth(monthDate, WINDOW_END);
+    const cursor = view.cursor;
+    els.calTitle.textContent = new Intl.DateTimeFormat(intlLocale(), { month: 'long', year: 'numeric' }).format(cursor);
+    // Paging is limited to the bookable window only (not to the license), as in production.
+    els.calPrev.disabled = monthKey(cursor) <= WINDOW_START.slice(0, 7);
+    els.calNext.disabled = monthKey(cursor) >= WINDOW_END.slice(0, 7);
 
-    renderWeekdayHeaders();
-    els.calGrid.innerHTML = '';
-    if (!hasLicense) {
-      return;
-    }
+    // Weekday initials, starting on Sunday (1 Sep 2024 was a Sunday).
+    const weekday = new Intl.DateTimeFormat(intlLocale(), { weekday: 'short' });
+    els.calWeekdays.innerHTML = Array.from({ length: 7 }, (_, i) => `<span>${escapeHtml(weekday.format(new Date(2024, 8, 1 + i)))}</span>`).join('');
 
-    const year = monthDate.getFullYear();
-    const month = monthDate.getMonth();
-    const startOffset = new Date(year, month, 1).getDay();
+    const year = cursor.getFullYear();
+    const month = cursor.getMonth();
+    const blanks = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const cells = [];
-    for (let i = 0; i < startOffset; i += 1) {
-      cells.push('<span class="calendar-day-empty" aria-hidden="true"></span>');
-    }
+    const booked = bookedDates();
+    const cells = Array.from({ length: blanks }, () => '<span class="calendar-day-empty" aria-hidden="true"></span>');
     for (let day = 1; day <= daysInMonth; day += 1) {
-      cells.push(renderDayButton(new Date(year, month, day)));
+      cells.push(renderDayButton(year, month, day, booked));
     }
     els.calGrid.innerHTML = cells.join('');
   }
 
-  /* ---------- rendering: time slots & note ---------- */
-
-  /** Echoes the day picked in step 2 next to the step 3 label. */
-  function renderPickedDateChip() {
-    const key = view.selectedDate;
-    els.pickedDateChip.hidden = !key;
-    els.pickedDateChip.textContent = key ? formatDate(parseDateKey(key)) : '';
-  }
+  /* ---------- step 3: time slots ---------- */
 
   function renderTimeSlots() {
     const hasDate = Boolean(view.selectedDate);
-    els.timeSlotPicker.setAttribute('aria-disabled', String(!hasDate));
+    els.pickedDateChip.hidden = !hasDate;
+    els.pickedDateChip.textContent = hasDate ? formatDay(view.selectedDate) : '';
     els.pickDateHint.hidden = hasDate;
-    if (!hasDate) {
-      els.timeSlotPicker.innerHTML = '';
-      return;
-    }
+    els.timeSlotPicker.setAttribute('aria-disabled', String(!hasDate));
+    els.timeSlotPicker.classList.toggle('is-loading', view.availabilityLoading);
     els.timeSlotPicker.innerHTML = TIME_SLOTS.map((slot) => {
-      const full = isSlotFull(view.selectedDate, view.license, slot.id);
+      const available = hasDate ? slotAvailable(view.license, view.selectedDate, slot.id) : 0;
+      const checked = view.selectedSlots.includes(slot.id);
       return `
-        <label class="time-slot-option">
-          <input type="checkbox" data-time-slot="${slot.id}"${view.selectedSlots.has(slot.id) ? ' checked' : ''}${full ? ' disabled' : ''}>
-          <span>${escapeHtml(timeSlotLabel(slot))}</span>
+        <label class="time-slot-option"${hasDate ? '' : ' style="display: none;"'}>
+          <input type="checkbox" data-time-slot="${slot.id}"${checked ? ' checked' : ''}${available <= 0 ? ' disabled' : ''}>
+          <span>${escapeHtml(slotLabel(slot.id))}</span>
         </label>`;
     }).join('');
   }
 
-  function renderNoteCount() {
-    els.noteCount.textContent = `${els.noteInput.value.length}/${NOTE_MAX_LENGTH}`;
-  }
-
-  /* ---------- details: book for, title ---------- */
+  /* ---------- step 4: details ---------- */
 
   function emailLocalPart() {
-    return els.emailInput.value.trim().toLowerCase();
+    return els.emailInput.value.trim();
   }
 
-  /** i18n key describing why the "someone else" email is invalid, or null when valid. */
+  function onBehalfEmail() {
+    return `${emailLocalPart().toLowerCase()}${CMU_EMAIL_DOMAIN}`;
+  }
+
+  /** Production emailError: shown only once the field has been blurred. */
   function emailError() {
-    const local = emailLocalPart();
-    if (!EMAIL_LOCAL_PATTERN.test(local)) {
-      return 'booking.emailInvalid';
+    if (view.bookFor !== BOOK_FOR.OTHER || !view.emailTouched) {
+      return null;
     }
-    if (`${local}${CMU_EMAIL_DOMAIN}` === SIGNED_IN_USER.email) {
-      return 'booking.emailSelf';
+    const value = emailLocalPart();
+    if (!value || !EMAIL_LOCAL_PATTERN.test(value)) {
+      return t('booking.emailInvalid');
+    }
+    if (onBehalfEmail() === SIGNED_IN_USER.email.toLowerCase()) {
+      return t('booking.emailSelf');
     }
     return null;
   }
 
-  /** Full email of the person the booking is for, or null when booking for oneself. */
-  function bookedForEmail() {
-    return view.bookFor === BOOK_FOR.OTHER ? `${emailLocalPart()}${CMU_EMAIL_DOMAIN}` : null;
-  }
-
-  function bookingTitle() {
-    return els.titleInput.value.trim();
-  }
-
   function detailsValid() {
-    const emailOk = view.bookFor === BOOK_FOR.SELF || emailError() === null;
-    return emailOk && bookingTitle().length > 0;
+    if (!els.titleInput.value.trim()) {
+      return false;
+    }
+    if (view.bookFor === BOOK_FOR.SELF) {
+      return true;
+    }
+    return EMAIL_LOCAL_PATTERN.test(emailLocalPart()) && onBehalfEmail() !== SIGNED_IN_USER.email.toLowerCase();
+  }
+
+  function canSave() {
+    return Boolean(view.license && view.selectedDate) && view.selectedSlots.length > 0 && detailsValid();
   }
 
   function renderDetails() {
-    const isOther = view.bookFor === BOOK_FOR.OTHER;
-    els.emailField.hidden = !isOther;
-    els.emailInput.required = isOther;
-    const errorKey = isOther && view.emailTouched && emailLocalPart() ? emailError() : null;
-    els.emailError.hidden = !errorKey;
-    els.emailError.textContent = errorKey ? t(errorKey) : '';
-    els.emailInput.setAttribute('aria-invalid', String(Boolean(errorKey)));
-    els.emailInput.closest('.input-group').classList.toggle('is-invalid', Boolean(errorKey));
+    els.emailField.hidden = view.bookFor !== BOOK_FOR.OTHER;
+    const error = emailError();
+    const message = error || (view.missingEmail ? t('booking.userNotFound') : '');
+    els.emailError.hidden = !message;
+    els.emailError.textContent = message;
+    const showProvision = !error && Boolean(view.missingEmail);
+    els.provisionButton.hidden = !showProvision;
+    els.provisionButton.disabled = view.provisioning;
+    els.provisionButton.textContent = showProvision ? t('provision.add', { email: view.missingEmail }) : '';
+    els.noteCount.textContent = `${els.noteInput.value.length}/${NOTE_MAX}`;
   }
 
-  function updateSaveButton() {
-    const count = view.selectedSlots.size;
-    els.saveButton.disabled = !view.license || !view.selectedDate || count === 0 || !detailsValid();
+  function renderSaveButton() {
+    const count = view.selectedSlots.length;
+    els.saveButton.disabled = !canSave();
     els.saveLabel.textContent = count > 1 ? t('booking.saveCount', { count }) : t('booking.save');
   }
 
-  /* ---------- rendering: my bookings ---------- */
+  /* ---------- confirm modal ---------- */
 
-  function renderBookingItem(booking) {
-    const slotsText = sortSlotIds(booking.slots).map((id) => timeSlotLabel(timeSlotById(id))).join(', ');
-    const note = booking.note
-      ? `<p class="booking-item-note">${escapeHtml(booking.note)}</p>`
-      : '';
-    const bookedFor = booking.bookedFor
-      ? `<span class="booking-item-for">${escapeHtml(t('booking.forLabel', { email: booking.bookedFor }))}</span>`
-      : '';
-    return `
-      <div class="booking-item">
-        <div class="booking-item-body">
-          <span class="booking-item-title">${escapeHtml(booking.title)}</span>
-          <span class="booking-item-date">${escapeHtml(formatDate(parseDateKey(booking.dateKey)))}</span>
-          <span class="badge badge-${booking.license}">${escapeHtml(licenseLabel(booking.license))}</span>
-          <span class="booking-item-slots">${escapeHtml(slotsText)}</span>
-          ${bookedFor}
-          ${note}
-        </div>
-        <button type="button" class="btn btn-outline-danger btn-sm" data-cancel-booking="${booking.id}">
-          <svg class="icon icon-sm" aria-hidden="true"><use href="#i-trash"></use></svg>
-          <span>${escapeHtml(t('booking.cancel'))}</span>
-        </button>
-      </div>`;
+  function summary() {
+    return {
+      license: view.license ? licenseLabel(view.license) : '',
+      date: view.selectedDate ? formatDay(view.selectedDate) : '',
+      slots: orderSlots(view.selectedSlots).map(slotLabel).join(', '),
+      bookedFor: view.bookFor === BOOK_FOR.SELF ? t('confirmBooking.self') : onBehalfEmail(),
+      title: els.titleInput.value.trim(),
+      notes: els.noteInput.value.trim() || t('confirmBooking.noNote')
+    };
   }
 
-  function renderBookingsList() {
-    const sorted = [...bookings].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
-    els.bookingEmpty.hidden = sorted.length > 0;
-    els.bookingList.innerHTML = sorted.map(renderBookingItem).join('');
+  function renderConfirmSummary() {
+    const s = summary();
+    const badge = view.license ? `<span class="badge badge-${view.license}">${escapeHtml(s.license)}</span>` : '';
+    const rows = [
+      ['confirmBooking.license', badge],
+      ['confirmBooking.date', escapeHtml(s.date)],
+      ['confirmBooking.timeSlots', escapeHtml(s.slots)],
+      ['confirmBooking.bookedFor', escapeHtml(s.bookedFor)],
+      ['confirmBooking.bookingTitle', escapeHtml(s.title)],
+      ['confirmBooking.note', escapeHtml(s.notes)]
+    ];
+    els.confirmSummary.innerHTML = rows.map(([key, value]) => `<dt>${escapeHtml(t(key))}</dt><dd>${value}</dd>`).join('');
+    els.confirmBooking.disabled = view.saving;
+  }
+
+  /* ---------- cancel / release modal ---------- */
+
+  function renderCancelModal() {
+    const release = view.pendingRelease;
+    const license = view.pendingCancel ? licenseLabel(view.pendingCancel.license) : '';
+    els.cancelIcon.setAttribute('href', release ? '#i-undo' : '#i-trash');
+    els.cancelTitle.textContent = release ? t('releaseBooking.title') : t('cancelBooking.title');
+    els.cancelBody.textContent = release ? t('releaseBooking.body', { license }) : t('cancelBooking.body');
+    els.confirmCancel.textContent = release ? t('releaseBooking.confirm') : t('cancelBooking.confirm');
+    els.confirmCancel.disabled = view.cancelling;
+  }
+
+  /* ---------- render ---------- */
+
+  function renderForm() {
+    renderCalendar();
+    renderTimeSlots();
+    renderDetails();
+    renderSaveButton();
   }
 
   function render() {
-    renderCalendar();
-    renderPickedDateChip();
-    renderTimeSlots();
-    renderDetails();
-    renderNoteCount();
-    updateSaveButton();
-    renderBookingsList();
+    renderMyBookings();
+    renderForm();
   }
 
   /* ---------- actions ---------- */
 
+  /** Picking a license invalidates the day and slots beneath it and reloads its availability. */
   function onLicenseChange(license) {
     view.license = license;
     view.selectedDate = null;
-    view.selectedSlots = new Set();
-    view.calendarMonth = new Date(WINDOW_START.getFullYear(), WINDOW_START.getMonth(), 1);
-    renderCalendar();
-    renderPickedDateChip();
-    renderTimeSlots();
-    updateSaveButton();
+    view.selectedSlots = [];
+    view.availabilityLoading = true;
+    renderForm();
+    window.setTimeout(() => {
+      view.availabilityLoading = false;
+      renderForm();
+    }, AVAILABILITY_LOAD_MS);
   }
 
   function onDayClick(key) {
-    // Only one day can be picked per booking: picking a new day replaces any previous pick
-    // (highlighted on the calendar and echoed next to step 3), and clicking the same day
-    // again clears it. Time slots reset, since they're per-day.
-    view.selectedDate = view.selectedDate === key ? null : key;
-    view.selectedSlots = new Set();
-    renderCalendar();
-    renderPickedDateChip();
-    renderTimeSlots();
-    updateSaveButton();
+    view.selectedDate = key;
+    view.selectedSlots = [];
+    renderForm();
   }
 
   function onSlotToggle(slotId) {
-    if (view.selectedSlots.has(slotId)) {
-      view.selectedSlots.delete(slotId);
-    } else {
-      view.selectedSlots.add(slotId);
-    }
-    updateSaveButton();
+    view.selectedSlots = view.selectedSlots.includes(slotId)
+      ? view.selectedSlots.filter((id) => id !== slotId)
+      : [...view.selectedSlots, slotId];
+    renderSaveButton();
   }
 
-  function hasCompleteSelection() {
-    return Boolean(view.license && view.selectedDate && view.selectedSlots.size > 0) && detailsValid();
+  function resetForm() {
+    view.license = null;
+    view.selectedDate = null;
+    view.selectedSlots = [];
+    view.bookFor = BOOK_FOR.SELF;
+    view.emailTouched = false;
+    view.missingEmail = null;
+    els.licenseRadios.forEach((radio) => { radio.checked = false; });
+    els.bookForRadios.forEach((radio) => { radio.checked = radio.value === BOOK_FOR.SELF; });
+    els.emailInput.value = '';
+    els.titleInput.value = '';
+    els.noteInput.value = '';
   }
 
-  /** Summary rows (license, date, time slots, note) for the confirm modal. */
-  function renderConfirmSummary() {
-    if (!hasCompleteSelection()) {
-      return;
-    }
-    const slotItems = sortSlotIds([...view.selectedSlots])
-      .map((id) => `<li>${escapeHtml(timeSlotLabel(timeSlotById(id)))}</li>`)
-      .join('');
-    const email = bookedForEmail();
-    const bookedForValue = email
-      ? escapeHtml(email)
-      : `${escapeHtml(t('confirmBooking.self'))} · ${escapeHtml(SIGNED_IN_USER.email)}`;
-    const note = els.noteInput.value.trim();
-    const noteValue = note
-      ? escapeHtml(note)
-      : `<span class="is-empty">${escapeHtml(t('confirmBooking.noNote'))}</span>`;
-    els.confirmSummary.innerHTML = `
-      <dt>${escapeHtml(t('confirmBooking.license'))}</dt>
-      <dd><span class="badge badge-${view.license}">${escapeHtml(licenseLabel(view.license))}</span></dd>
-      <dt>${escapeHtml(t('confirmBooking.date'))}</dt>
-      <dd>${escapeHtml(formatDate(parseDateKey(view.selectedDate)))}</dd>
-      <dt>${escapeHtml(t('confirmBooking.timeSlots'))}</dt>
-      <dd><ul class="booking-summary-slots">${slotItems}</ul></dd>
-      <dt>${escapeHtml(t('confirmBooking.bookedFor'))}</dt>
-      <dd>${bookedForValue}</dd>
-      <dt>${escapeHtml(t('confirmBooking.bookingTitle'))}</dt>
-      <dd>${escapeHtml(bookingTitle())}</dd>
-      <dt>${escapeHtml(t('confirmBooking.note'))}</dt>
-      <dd>${noteValue}</dd>`;
-  }
-
-  /** Save button: show the booking summary; the booking is only saved once confirmed. */
   function onSave() {
-    if (!hasCompleteSelection()) {
+    if (!canSave()) {
       return;
     }
     renderConfirmSummary();
     openModal(CONFIRM_MODAL_ID);
   }
 
-  function onConfirmBooking() {
-    closeModal(els.confirmModal);
-    if (!hasCompleteSelection()) {
-      console.error('[booking] Confirm clicked without a complete selection');
+  async function onConfirmBooking() {
+    if (!canSave() || view.saving) {
       return;
     }
-    const license = view.license;
-    const key = view.selectedDate;
-    // Defensive re-check: guards against the day filling up between selection and save.
-    if (!userBooking(key, license) && remaining(key, license) <= 0) {
-      showToast(t('booking.dayFull'), 'error');
-      view.selectedDate = null;
-      view.selectedSlots = new Set();
+    const s = summary();
+    const forOther = view.bookFor === BOOK_FOR.OTHER;
+    const email = forOther ? onBehalfEmail() : null;
+    view.saving = true;
+    els.confirmBooking.disabled = true;
+    try {
+      // Mock POST /api/bookings: 404 when the on-behalf person is not in CMU Zoom yet.
+      const result = await withLoading(() => {
+        if (forOther && !isInCmuZoom(email)) {
+          return { ok: false, notFound: true };
+        }
+        const slots = orderSlots(view.selectedSlots);
+        bookings.push({
+          id: nextBookingId++,
+          license: view.license,
+          dateKey: view.selectedDate,
+          slots,
+          title: s.title,
+          note: els.noteInput.value.trim(),
+          bookedFor: email,
+          bookedForUser: null,
+          bookedBy: SIGNED_IN_USER,
+          createdAt: MockData.mockNow(),
+          windows: slots.map((slotId) => MockData.slotWindow(view.selectedDate, slotId))
+        });
+        return { ok: true, count: slots.length };
+      });
+      if (result.ok) {
+        toast.success(t('booking.saved', { license: s.license, date: s.date, count: result.count }));
+        resetForm();
+      } else if (result.notFound) {
+        // Not in CMU Zoom yet: say so beside the field and offer to add them.
+        view.missingEmail = s.bookedFor;
+      }
+    } catch (error) {
+      console.error('[booking] Save failed', error);
+      toast.error(t('common.error'));
+    } finally {
+      view.saving = false;
+      closeModal(els.confirmModal);
       render();
-      return;
     }
-
-    const slots = sortSlotIds([...view.selectedSlots]);
-    const note = els.noteInput.value.trim();
-    bookings.push({ id: nextBookingId++, license, dateKey: key, slots, title: bookingTitle(), bookedFor: bookedForEmail(), note });
-
-    view.selectedDate = null;
-    view.selectedSlots = new Set();
-    resetDetails();
-    render();
-    showToast(t('booking.saved', { license: licenseLabel(license), date: formatDate(parseDateKey(key)), count: slots.length }), 'success');
   }
 
-  function resetDetails() {
-    view.bookFor = BOOK_FOR.SELF;
-    view.emailTouched = false;
-    els.bookForRadios.forEach((radio) => {
-      radio.checked = radio.value === BOOK_FOR.SELF;
-    });
-    els.emailInput.value = '';
-    els.titleInput.value = '';
-    els.noteInput.value = '';
-  }
-
-  function onBookForChange(value) {
-    if (!Object.values(BOOK_FOR).includes(value)) {
-      console.error('[booking] Unknown "book for" option', value);
+  /** "Check {email} from MIS": adding the person does not resubmit; the user saves again. */
+  async function onProvision() {
+    const email = view.missingEmail;
+    if (!email || view.provisioning) {
       return;
     }
-    view.bookFor = value;
+    view.provisioning = true;
     renderDetails();
-    updateSaveButton();
-    if (value === BOOK_FOR.OTHER) {
-      els.emailInput.focus();
+    try {
+      const found = await withLoading(() => email !== `${MIS_MISSING_LOCAL_PART}${CMU_EMAIL_DOMAIN}`);
+      if (found) {
+        provisionedEmails.add(email);
+        toast.success(t('provision.success', { email }));
+        view.missingEmail = null;
+      } else {
+        console.error('[provision] failed for', email);
+        toast.error(t('provision.notFound', { email }));
+      }
+    } catch (error) {
+      console.error('[provision] failed for', email, error);
+      toast.error(t('common.error'));
+    } finally {
+      view.provisioning = false;
+      renderDetails();
     }
   }
 
-  function onCancelBooking(id) {
-    view.cancelBookingId = id;
+  function askCancel(id, release) {
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) {
+      console.error('[booking] Booking not found', id);
+      return;
+    }
+    view.pendingCancel = booking;
+    view.pendingRelease = release;
+    renderCancelModal();
     openModal(CANCEL_MODAL_ID);
   }
 
-  function onConfirmCancelBooking() {
-    const index = bookings.findIndex((booking) => booking.id === view.cancelBookingId);
-    if (index === -1) {
-      console.error('[booking] Booking not found for cancel', view.cancelBookingId);
-    } else {
-      bookings.splice(index, 1);
-      renderBookingsList();
-      renderCalendar();
-      showToast(t('booking.cancelled'), 'success');
+  async function onConfirmCancel() {
+    const booking = view.pendingCancel;
+    if (!booking || view.cancelling) {
+      return;
     }
-    closeModal(els.cancelModal);
-    view.cancelBookingId = null;
+    const release = view.pendingRelease;
+    view.cancelling = true;
+    els.confirmCancel.disabled = true;
+    try {
+      // Mock DELETE /api/bookings: a release always frees the license right away here.
+      const result = await withLoading(() => {
+        const index = bookings.indexOf(booking);
+        if (index === -1) {
+          throw new Error(`Booking ${booking.id} not found`);
+        }
+        bookings.splice(index, 1);
+        return { released: release };
+      });
+      if (!release) {
+        toast.success(t('booking.cancelled'));
+      } else {
+        toast.success(result.released ? t('releaseBooking.released') : t('releaseBooking.releasedLater'));
+      }
+    } catch (error) {
+      console.error('[booking] Cancel failed', error);
+      toast.error(t('common.error'));
+    } finally {
+      view.cancelling = false;
+      closeModal(els.cancelModal);
+      view.pendingCancel = null;
+      view.pendingRelease = false;
+      render();
+    }
+  }
+
+  function stepMonth(months) {
+    view.cursor = new Date(view.cursor.getFullYear(), view.cursor.getMonth() + months, 1);
+    renderCalendar();
   }
 
   function bindEvents() {
@@ -509,75 +630,81 @@
         onLicenseChange(radio.value);
       }
     });
-
-    els.calPrev.addEventListener('click', () => {
-      view.calendarMonth = addMonths(view.calendarMonth, -1);
-      renderCalendar();
-    });
-
-    els.calNext.addEventListener('click', () => {
-      view.calendarMonth = addMonths(view.calendarMonth, 1);
-      renderCalendar();
-    });
-
+    els.calPrev.addEventListener('click', () => stepMonth(-1));
+    els.calNext.addEventListener('click', () => stepMonth(1));
     els.calGrid.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-day]');
       if (button && !button.disabled) {
         onDayClick(button.dataset.day);
       }
     });
-
     els.timeSlotPicker.addEventListener('change', (event) => {
       const checkbox = event.target.closest('[data-time-slot]');
       if (checkbox) {
         onSlotToggle(checkbox.dataset.timeSlot);
       }
     });
-
     els.bookForGroup.addEventListener('change', (event) => {
       const radio = event.target.closest('[data-book-for]');
-      if (radio) {
-        onBookForChange(radio.value);
+      if (!radio) {
+        return;
       }
+      view.bookFor = radio.value === BOOK_FOR.OTHER ? BOOK_FOR.OTHER : BOOK_FOR.SELF;
+      view.missingEmail = null;
+      renderDetails();
+      renderSaveButton();
     });
-
     els.emailInput.addEventListener('input', () => {
-      // Pasting a full address keeps just the local part, since the domain is fixed.
-      const value = els.emailInput.value;
-      if (value.toLowerCase().endsWith(CMU_EMAIL_DOMAIN)) {
-        els.emailInput.value = value.slice(0, -CMU_EMAIL_DOMAIN.length);
-      }
+      view.missingEmail = null;
+      renderDetails();
+      renderSaveButton();
+    });
+    els.emailInput.addEventListener('blur', () => {
       view.emailTouched = true;
       renderDetails();
-      updateSaveButton();
     });
-
-    els.titleInput.addEventListener('input', updateSaveButton);
-    els.noteInput.addEventListener('input', renderNoteCount);
+    els.provisionButton.addEventListener('click', onProvision);
+    els.titleInput.addEventListener('input', renderSaveButton);
+    els.noteInput.addEventListener('input', renderDetails);
     els.saveButton.addEventListener('click', onSave);
     els.confirmBooking.addEventListener('click', onConfirmBooking);
+    els.confirmCancel.addEventListener('click', onConfirmCancel);
 
-    els.bookingList.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-cancel-booking]');
-      if (button) {
-        onCancelBooking(Number(button.dataset.cancelBooking));
+    els.myBookings.addEventListener('click', (event) => {
+      const cancel = event.target.closest('[data-cancel-booking]');
+      if (cancel) {
+        askCancel(Number(cancel.dataset.cancelBooking), cancel.hasAttribute('data-release'));
+        return;
+      }
+      if (event.target.closest('[data-toggle-past]')) {
+        view.showPast = !view.showPast;
+        view.pastLimit = PAST_PAGE_SIZE;
+        renderMyBookings();
+        return;
+      }
+      if (event.target.closest('[data-show-more-past]')) {
+        view.pastLimit += PAST_PAGE_SIZE;
+        renderMyBookings();
       }
     });
-
-    els.confirmCancel.addEventListener('click', onConfirmCancelBooking);
 
     document.addEventListener(EVENTS.LANG, () => {
       render();
       if (els.confirmModal.open) {
         renderConfirmSummary();
       }
+      if (els.cancelModal.open) {
+        renderCancelModal();
+      }
     });
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     const selectors = {
-      pickLicenseHint: '[data-pick-license-hint]',
+      myBookings: '[data-my-bookings]',
       licensePicker: '[data-license-picker]',
+      pickLicenseHint: '[data-pick-license-hint]',
+      availabilityRegion: '[data-availability-region]',
       calendar: '[data-calendar]',
       calPrev: '[data-cal-prev]',
       calNext: '[data-cal-next]',
@@ -591,17 +718,19 @@
       emailField: '[data-email-field]',
       emailInput: '[data-email-input]',
       emailError: '[data-email-error]',
+      provisionButton: '[data-provision]',
       titleInput: '[data-title-input]',
       noteInput: '[data-note-input]',
       noteCount: '[data-note-count]',
       saveButton: '[data-save-booking]',
       saveLabel: '[data-save-label]',
-      bookingList: '[data-booking-list]',
-      bookingEmpty: '[data-booking-empty]',
       confirmModal: `#${CONFIRM_MODAL_ID}`,
       confirmSummary: '[data-booking-summary]',
       confirmBooking: '[data-confirm-booking]',
       cancelModal: `#${CANCEL_MODAL_ID}`,
+      cancelIcon: '[data-cancel-icon]',
+      cancelTitle: '[data-cancel-title]',
+      cancelBody: '[data-cancel-body]',
       confirmCancel: '[data-confirm-cancel-booking]'
     };
     try {
@@ -612,9 +741,15 @@
         }
         els[key] = el;
       });
+      els.licenseRadios = [...els.licensePicker.querySelectorAll('[data-license-radio]')];
       els.bookForRadios = [...els.bookForGroup.querySelectorAll('[data-book-for]')];
       bindEvents();
       render();
+      // Mock GET /api/bookings: skeleton first, as production's lazy fetch does.
+      window.setTimeout(() => {
+        view.bookingsLoading = false;
+        renderMyBookings();
+      }, BOOKINGS_LOAD_MS);
     } catch (error) {
       console.error('[booking] Initialisation failed', error);
     }

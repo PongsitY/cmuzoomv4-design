@@ -12,9 +12,12 @@
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/mock-data.js"></script>
+  <script src="assets/js/pool-holders.js" defer></script>
+  <script src="assets/js/admin-bookings.js" defer></script>
+  <script src="assets/js/action-logs.js" defer></script>
   <script src="assets/js/manage-admins.js" defer></script>
 </head>
-<body data-demo-switcher>
+<body data-demo-switcher data-page="manage-admins">
   <!-- ===== Navbar (shared with profile.html) ===== -->
   <header class="navbar">
     <div class="navbar-inner">
@@ -47,16 +50,16 @@
 
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
-          <span class="avatar avatar-sm" aria-hidden="true">AS</span>
-          <span class="avatar-name">Anong Srisuk</span>
+          <span class="avatar user-avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name" data-i18n="demo.userName">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
         <div class="menu" id="user-menu" data-dropdown-menu hidden>
           <div class="menu-header">
-            <span class="avatar avatar-lg" aria-hidden="true">AS</span>
+            <span class="avatar user-avatar avatar-lg" aria-hidden="true">AS</span>
             <div>
-              <strong>Anong Srisuk</strong>
+              <strong data-i18n="demo.userName">Anong Srisuk</strong>
               <p class="menu-email">anong.s@cmu.ac.th</p>
               <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
             </div>
@@ -115,7 +118,7 @@
     </div>
   </header>
 
-  <!-- ===== Admin Console (Global Admin only) ===== -->
+  <!-- ===== Admin Console (Global Admin only) — production app/pages/manage-admins.vue ===== -->
   <main class="page page-wide">
     <section class="card no-permission" data-no-permission hidden>
       <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-lock"></use></svg></span>
@@ -127,79 +130,161 @@
       </a>
     </section>
 
-    <div class="page-header" data-page-head hidden>
-      <h1 data-i18n="admins.pageTitle">Admin Console</h1>
-      <p class="page-subtitle" data-i18n="admins.subtitle"></p>
-    </div>
+    <div data-console hidden>
+      <h1 class="visually-hidden" data-i18n="admins.pageTitle">Admin Console</h1>
 
-    <!-- Two tabs; manage-admins.js shows one panel at a time. -->
-    <div class="tabs" role="tablist" data-i18n-aria-label="admins.tabs" data-tabs hidden>
-      <button type="button" class="tab" role="tab" id="tab-stats" aria-controls="panel-stats" data-tab="stats" data-i18n="admins.tabStats">Stats</button>
-      <button type="button" class="tab" role="tab" id="tab-admins" aria-controls="panel-admins" data-tab="admins" data-i18n="admins.tabAdmins">Admin Management</button>
-    </div>
-
-    <div class="tab-panel" role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" data-stats hidden>
-    <section class="card stats-card" aria-labelledby="stats-title">
-      <h2 class="card-title" id="stats-title" data-i18n="stats.title">Usage summary</h2>
-      <div class="stat-grid" data-stat-grid></div>
-    </section>
-
-    <section class="card quota-table-card" aria-labelledby="quota-table-title">
-      <div class="quota-table-head">
-        <h2 class="card-title" id="quota-table-title" data-i18n="adminQuota.title">Pro License Quotas</h2>
-        <span class="quota-total" data-quota-total></span>
-      </div>
-      <div class="table-scroll">
-        <table class="users-table quota-table">
-          <thead>
-            <tr>
-              <th scope="col" data-i18n="table.organization">Organization</th>
-              <th scope="col" data-i18n="adminQuota.colUsage">Pro licenses used</th>
-              <th scope="col" class="col-action"><span class="visually-hidden" data-i18n="adminQuota.colEdit">Edit quota</span></th>
-            </tr>
-          </thead>
-          <tbody data-quota-rows></tbody>
-        </table>
-      </div>
-    </section>
-
-    </div>
-
-    <div class="tab-panel" role="tabpanel" id="panel-admins" aria-labelledby="tab-admins" data-admins hidden>
-    <section class="card users-card" aria-labelledby="admins-heading">
-      <div class="users-header">
-        <div class="org-heading">
-          <h2 id="admins-heading" class="card-title" data-i18n="admins.heading">Organization Admin</h2>
-          <span class="org-count" data-admin-count></span>
-        </div>
-        <!-- Organization filter for the admin list; defaults to the first organization. -->
-        <div class="page-filter">
-          <label for="org-select" data-i18n="manage.organization">Organization</label>
-          <select class="select org-select" id="org-select" data-org-select></select>
-        </div>
-        <button type="button" class="btn btn-primary" data-add-admin aria-haspopup="dialog">
-          <svg class="icon" aria-hidden="true"><use href="#i-user-plus"></use></svg>
-          <span data-i18n="admins.add">Add admin</span>
-        </button>
+      <!-- Four tabs (WAI-ARIA tabs pattern); manage-admins.js shows one panel at a time. -->
+      <div class="tabs" role="tablist" data-i18n-aria-label="admins.tabs" data-tabs>
+        <button type="button" class="tab" role="tab" id="tab-stats" aria-controls="panel-stats" data-tab="stats" data-i18n="admins.tabStats">Stats</button>
+        <button type="button" class="tab" role="tab" id="tab-admins" aria-controls="panel-admins" data-tab="admins" data-i18n="admins.tabAdmins">Admin Management</button>
+        <button type="button" class="tab" role="tab" id="tab-bookings" aria-controls="panel-bookings" data-tab="bookings" data-i18n="admins.tabBookings">Booked Licenses</button>
+        <button type="button" class="tab" role="tab" id="tab-logs" aria-controls="panel-logs" data-tab="logs" data-i18n="admins.tabLogs">Action Log</button>
       </div>
 
-      <div class="table-scroll">
-        <table class="users-table admins-table">
-          <thead>
-            <tr>
-              <th scope="col" data-i18n="table.name">Name</th>
-              <th scope="col" class="col-action" data-i18n="table.action">Permission</th>
-            </tr>
-          </thead>
-          <tbody data-admin-rows></tbody>
-        </table>
-        <div class="empty-state" data-empty hidden>
-          <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
-          <!-- Wording depends on the filter, so manage-admins.js fills it instead of data-i18n. -->
-          <p data-empty-text>This organization has no admins yet.</p>
-        </div>
+      <!-- Stats -->
+      <div class="tab-panel" role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" data-panel="stats" hidden>
+        <section class="card stats-card" aria-labelledby="stats-title">
+          <h2 class="card-title" id="stats-title" data-i18n="stats.title">Usage summary</h2>
+          <div class="stat-grid" data-stat-grid></div>
+        </section>
+
+        <section class="card quota-table-card" aria-labelledby="quota-table-title">
+          <div class="quota-table-head">
+            <h2 class="card-title" id="quota-table-title" data-i18n="adminQuota.title">Pro License Quotas</h2>
+            <span class="quota-total" data-quota-total></span>
+          </div>
+          <div class="table-scroll">
+            <table class="users-table quota-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="table.organization">Organization</th>
+                  <th scope="col" data-i18n="adminQuota.colUsage">Pro licenses used</th>
+                  <th scope="col" class="col-action"><span class="visually-hidden" data-i18n="adminQuota.colEdit">Edit quota</span></th>
+                </tr>
+              </thead>
+              <tbody data-quota-rows></tbody>
+            </table>
+          </div>
+        </section>
       </div>
-    </section>
+
+      <!-- Admin management -->
+      <div class="tab-panel" role="tabpanel" id="panel-admins" aria-labelledby="tab-admins" data-panel="admins" hidden>
+        <section class="card users-card" data-i18n-aria-label="admins.heading">
+          <div class="users-header">
+            <div class="page-filter">
+              <label for="admin-org-select" data-i18n="manage.organization">Organization</label>
+              <select class="select org-select" id="admin-org-select" data-org-select></select>
+            </div>
+            <button type="button" class="btn btn-primary" aria-haspopup="dialog" data-add-admin>
+              <svg class="icon" aria-hidden="true"><use href="#i-user-plus"></use></svg>
+              <span data-i18n="admins.add">Add admin</span>
+            </button>
+          </div>
+
+          <div class="table-scroll">
+            <table class="users-table admins-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="table.name">Name</th>
+                  <th scope="col" class="col-action" data-i18n="table.action">Permission</th>
+                </tr>
+              </thead>
+              <tbody data-admin-rows></tbody>
+            </table>
+            <div class="empty-state" data-admins-empty hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg>
+              <p data-i18n="admins.empty">This organization has no admins yet.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Booked licenses — production AdminBookingCalendar.vue (admin-bookings.js) -->
+      <div class="tab-panel" role="tabpanel" id="panel-bookings" aria-labelledby="tab-bookings" data-panel="bookings" hidden>
+        <section class="card users-card" data-i18n-aria-label="adminBookings.heading">
+          <div class="admin-bookings">
+            <div class="calendar calendar-admin">
+              <div class="calendar-head">
+                <button type="button" class="icon-button" data-i18n-aria-label="booking.prevMonth" data-ab-step="-1">
+                  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-left"></use></svg>
+                </button>
+                <span class="calendar-title" aria-live="polite" data-ab-title></span>
+                <button type="button" class="icon-button" data-i18n-aria-label="booking.nextMonth" data-ab-step="1">
+                  <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-right"></use></svg>
+                </button>
+              </div>
+              <div class="calendar-weekdays" data-ab-weekdays></div>
+              <div class="calendar-grid" data-ab-grid></div>
+            </div>
+
+            <div class="admin-bookings-day" aria-live="polite">
+              <div class="page-filter admin-bookings-filter">
+                <label for="admin-bookings-license" data-i18n="adminBookings.license">License</label>
+                <select id="admin-bookings-license" class="select" data-ab-license></select>
+              </div>
+              <h3 class="card-title admin-bookings-date" data-ab-date></h3>
+              <div data-ab-list></div>
+            </div>
+          </div>
+
+          <ul class="calendar-legend" data-i18n-aria-label="adminBookings.legend" data-ab-legend></ul>
+        </section>
+      </div>
+
+      <!-- Action log — production AdminActionLogs.vue (action-logs.js) -->
+      <div class="tab-panel" role="tabpanel" id="panel-logs" aria-labelledby="tab-logs" data-panel="logs" hidden>
+        <section class="card users-card" aria-labelledby="action-logs-heading">
+          <div class="users-header">
+            <div class="org-heading">
+              <h2 id="action-logs-heading" class="card-title" data-i18n="actionLogs.heading">Action log</h2>
+              <span class="org-count" data-al-count></span>
+            </div>
+
+            <form class="field" role="search" data-al-search>
+              <label class="visually-hidden" for="action-logs-email" data-i18n="actionLogs.email">Filter by email</label>
+              <input id="action-logs-email" type="search" autocomplete="off" data-i18n-placeholder="actionLogs.email" data-al-email>
+              <button type="submit" class="search-submit" data-i18n-aria-label="manage.searchSubmit" data-i18n-title="manage.searchSubmit">
+                <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+              </button>
+            </form>
+
+            <div class="page-filter">
+              <label for="action-logs-topic" data-i18n="actionLogs.topic">Topic</label>
+              <select id="action-logs-topic" class="select" data-al-topic></select>
+            </div>
+
+            <div class="page-filter">
+              <label for="action-logs-from" data-i18n="actionLogs.from">From</label>
+              <input id="action-logs-from" class="select" type="date" data-al-from>
+            </div>
+            <div class="page-filter">
+              <label for="action-logs-to" data-i18n="actionLogs.to">To</label>
+              <input id="action-logs-to" class="select" type="date" data-al-to>
+            </div>
+          </div>
+
+          <div class="table-scroll">
+            <table class="users-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="actionLogs.time">Time</th>
+                  <th scope="col" data-i18n="actionLogs.topic">Topic</th>
+                  <th scope="col" data-i18n="actionLogs.message">Details</th>
+                  <th scope="col" data-i18n="actionLogs.user">Account ID</th>
+                </tr>
+              </thead>
+              <tbody data-al-rows></tbody>
+            </table>
+            <div class="empty-state" data-al-empty hidden>
+              <svg class="icon" aria-hidden="true"><use href="#i-file-text"></use></svg>
+              <p data-i18n="actionLogs.empty">No log entries match these filters.</p>
+            </div>
+          </div>
+
+          <div data-al-pagination></div>
+        </section>
+      </div>
     </div>
   </main>
 
@@ -239,63 +324,58 @@
     </div>
   </dialog>
 
-  <!-- Pro quota modal: organization name, current use and the input are filled by manage-admins.js. -->
+  <!-- Edit Pro quota: input, "in use" note and validation filled by manage-admins.js. -->
   <dialog class="modal" id="quota-modal" aria-labelledby="quota-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
-        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg></span>
-        <div class="modal-title-group">
-          <h2 id="quota-modal-title" data-i18n="adminQuota.modalTitle">Edit Pro quota</h2>
-          <p class="modal-subtitle" data-quota-org></p>
-        </div>
+        <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-pencil"></use></svg></span>
+        <h2 id="quota-modal-title" data-i18n="adminQuota.modalTitle">Edit Pro quota</h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
       </div>
       <div class="modal-body">
-        <label class="quota-field">
-          <span class="modal-section-title" data-i18n="adminQuota.field">Pro licenses</span>
-          <input type="number" class="input" data-quota-input inputmode="numeric" step="1" min="0" max="999">
-        </label>
+        <label class="booking-field-label" for="quota-input" data-i18n="adminQuota.field">Pro licenses</label>
+        <input id="quota-input" class="input" type="number" min="0" max="999" step="1" data-quota-input>
         <p class="modal-note" data-quota-hint></p>
+        <p class="field-error" data-quota-error hidden></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
-        <button type="button" class="btn btn-primary" data-quota-save data-i18n="adminQuota.save">Save</button>
+        <button type="button" class="btn btn-primary" data-quota-save data-i18n="adminQuota.save">Save quota</button>
       </div>
     </div>
   </dialog>
 
-  <!-- Add admin modal: candidates (the organization's non-admin users) filled by manage-admins.js. -->
-  <dialog class="modal" id="add-admin-modal" aria-labelledby="add-admin-title">
+  <!-- Add admin: information-style modal, no footer (production). Candidates filled by manage-admins.js. -->
+  <dialog class="modal" id="add-admin-modal" aria-labelledby="add-admin-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
         <span class="modal-icon"><svg class="icon" aria-hidden="true"><use href="#i-user-plus"></use></svg></span>
-        <div class="modal-title-group">
-          <h2 id="add-admin-title" data-i18n="admins.addTitle">Add admin</h2>
-          <p class="modal-subtitle" data-add-org></p>
-        </div>
+        <h2 id="add-admin-modal-title" data-i18n="admins.addTitle">Add admin</h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
       </div>
       <div class="modal-body">
-        <label class="field">
-          <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
-          <span class="visually-hidden" data-i18n="admins.search">Search name or email</span>
-          <input type="search" autocomplete="off" data-candidate-search data-i18n-placeholder="admins.search">
-        </label>
+        <form class="field" role="search" data-candidate-form>
+          <label class="visually-hidden" for="candidate-search" data-i18n="admins.search">Search name or email</label>
+          <input id="candidate-search" type="search" autocomplete="off" data-i18n-placeholder="admins.search" data-candidate-search>
+          <button type="submit" class="search-submit" data-i18n-aria-label="manage.searchSubmit" data-i18n-title="manage.searchSubmit">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          </button>
+        </form>
         <div class="admin-candidates" data-candidates></div>
       </div>
     </div>
   </dialog>
 
-  <!-- Revoke admin confirmation: message filled by manage-admins.js. -->
-  <dialog class="modal" id="revoke-admin-modal" aria-labelledby="revoke-admin-title">
+  <!-- Revoke admin -->
+  <dialog class="modal" id="revoke-admin-modal" aria-labelledby="revoke-admin-modal-title">
     <div class="modal-panel">
       <div class="modal-header">
         <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-shield"></use></svg></span>
-        <h2 id="revoke-admin-title" data-i18n="admins.revokeTitle">Revoke admin permission?</h2>
+        <h2 id="revoke-admin-modal-title" data-i18n="admins.revokeTitle">Revoke admin permission?</h2>
         <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
           <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
         </button>
@@ -306,6 +386,31 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
         <button type="button" class="btn btn-danger" data-confirm-revoke data-i18n="admins.revoke">Revoke</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Cancel a booking (Booked Licenses tab): filled by admin-bookings.js. -->
+  <dialog class="modal" id="admin-cancel-booking-modal" aria-labelledby="admin-cancel-booking-modal-title">
+    <div class="modal-panel">
+      <div class="modal-header">
+        <span class="modal-icon modal-icon-danger"><svg class="icon" aria-hidden="true"><use href="#i-trash"></use></svg></span>
+        <h2 id="admin-cancel-booking-modal-title" data-i18n="cancelBooking.title">Cancel booking?</h2>
+        <button type="button" class="icon-button" data-modal-close data-i18n-aria-label="modal.close">
+          <svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p data-ab-cancel-body></p>
+        <p class="booking-item-for" data-ab-cancel-summary></p>
+        <label class="admin-bookings-notify">
+          <input type="checkbox" checked data-ab-notify>
+          <span data-i18n="adminBookings.notify">Email the user</span>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" data-modal-close data-i18n="modal.cancel">Cancel</button>
+        <button type="button" class="btn btn-danger" data-ab-cancel-confirm data-i18n="cancelBooking.confirm">Cancel booking</button>
       </div>
     </div>
   </dialog>

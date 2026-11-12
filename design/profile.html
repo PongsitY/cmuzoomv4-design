@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My Profile · CMU ZOOM</title>
+  <title>Edit Profile · CMU ZOOM</title>
   <link rel="icon" type="image/png" href="../images/favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,9 +11,10 @@
   <link rel="stylesheet" href="assets/css/styles.css">
   <script src="assets/js/i18n.js"></script>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/mock-data.js"></script>
   <script src="assets/js/profile.js" defer></script>
 </head>
-<body data-demo-switcher>
+<body data-demo-switcher data-page="profile">
   <!-- ===== Navbar (shared with manage-users.html) ===== -->
   <header class="navbar">
     <div class="navbar-inner">
@@ -46,16 +47,16 @@
 
       <div class="dropdown" data-dropdown>
         <button type="button" class="avatar-button" data-dropdown-toggle aria-expanded="false" aria-controls="user-menu" data-i18n-aria-label="menu.open">
-          <span class="avatar avatar-sm" aria-hidden="true">AS</span>
-          <span class="avatar-name">Anong Srisuk</span>
+          <span class="avatar user-avatar avatar-sm" aria-hidden="true">AS</span>
+          <span class="avatar-name" data-i18n="demo.userName">Anong Srisuk</span>
           <svg class="icon icon-sm" aria-hidden="true"><use href="#i-chevron-down"></use></svg>
         </button>
 
         <div class="menu" id="user-menu" data-dropdown-menu hidden>
           <div class="menu-header">
-            <span class="avatar avatar-lg" aria-hidden="true">AS</span>
+            <span class="avatar user-avatar avatar-lg" aria-hidden="true">AS</span>
             <div>
-              <strong>Anong Srisuk</strong>
+              <strong data-i18n="demo.userName">Anong Srisuk</strong>
               <p class="menu-email">anong.s@cmu.ac.th</p>
               <a href="https://zoom.us/profile" target="_blank" rel="noopener" data-i18n="menu.editProfile">Edit Profile</a>
             </div>
@@ -117,26 +118,39 @@
   <!-- ===== 1. User Profile ===== -->
   <main class="page page-centered">
     <div class="profile-grid">
-      <section class="card profile-card" aria-labelledby="profile-name">
-        <div class="profile-identity">
-          <span class="avatar avatar-xl" aria-hidden="true">AS</span>
+      <!-- aria-busy + the skeleton blocks mirror production's lazy /api/me load; profile.js clears them. -->
+      <section class="card profile-card" aria-labelledby="profile-name" aria-busy="true" data-profile-card>
+        <div class="profile-identity" aria-hidden="true" data-skeleton>
+          <span class="skeleton skeleton-circle" style="width: 140px; height: 140px" aria-hidden="true"></span>
+          <div class="profile-nameplate skeleton-stack skeleton-centered">
+            <span class="skeleton skeleton-line" style="width: 220px; height: 24px" aria-hidden="true"></span>
+            <span class="skeleton skeleton-line" style="width: 180px" aria-hidden="true"></span>
+          </div>
+          <span class="skeleton skeleton-line" style="width: 160px" aria-hidden="true"></span>
+        </div>
+        <div class="profile-identity" data-loaded hidden>
+          <span class="avatar user-avatar avatar-xl" aria-hidden="true"><span data-profile-initials></span></span>
           <!-- One block, so the column's space-around cannot open a gap between name and email. -->
           <div class="profile-nameplate">
-            <h1 class="profile-name" id="profile-name">Anong Srisuk</h1>
-            <p class="profile-email">anong.s@cmu.ac.th</p>
+            <h1 class="profile-name" id="profile-name" data-profile-name></h1>
+            <p class="profile-email" data-profile-email></p>
           </div>
           <p class="profile-org">
             <svg class="icon icon-sm" aria-hidden="true"><use href="#i-building"></use></svg>
-            <span data-i18n="profile.mockOrg">Faculty of Engineering</span>
+            <span data-profile-org></span>
           </p>
         </div>
 
         <div class="profile-license">
-          <!-- One .license-box per held license, built by profile.js. -->
-          <div class="license-list" data-license-list></div>
+          <!-- One .license-box per held license (main, then the Large Meeting add-on), built by profile.js. -->
+          <div class="license-list" data-license-list>
+            <div class="license-box" aria-hidden="true">
+              <span class="skeleton skeleton-line" style="width: 80px; height: 10px" aria-hidden="true"></span>
+              <span class="skeleton skeleton-pill" style="width: 140px; height: 48px" aria-hidden="true"></span>
+            </div>
+          </div>
 
-          <!-- Basic users only: get Pro from the organization's quota (disabled when the quota is full).
-               profile.js moves these two into the license card itself when the user is Basic. -->
+          <!-- Basic users only: get Pro from the organization's quota (disabled when the quota is full). -->
           <button type="button" class="btn btn-primary btn-block profile-license-action" data-modal-open="request-modal" data-request-button aria-describedby="request-hint" hidden>
             <svg class="icon" aria-hidden="true"><use href="#i-send"></use></svg>
             <span data-i18n="profile.request">Request Pro</span>
@@ -145,9 +159,10 @@
         </div>
 
         <!-- Spans both columns: an account-wide setting, not something tied to one license. -->
-        <div class="recording-setting">
-          <span class="switch">
-            <input type="checkbox" id="recording-toggle" checked data-recording-toggle>
+        <div class="recording-setting" aria-busy="true" data-recording-setting>
+          <span class="skeleton skeleton-pill" style="width: 44px" aria-hidden="true" data-skeleton></span>
+          <span class="switch" data-loaded hidden>
+            <input type="checkbox" id="recording-toggle" data-recording-toggle>
             <span class="switch-track"></span>
           </span>
           <label for="recording-toggle">
@@ -258,8 +273,9 @@
       </div>
       <div class="modal-body">
         <p data-i18n="request.body"></p>
-        <p class="modal-note">
-          <span data-i18n="request.termsPrefix">By sending a request, you agree to the</span>
+        <p>
+          <span data-i18n="request.termsPrefix">By getting Pro, you agree to the</span>
+          <!-- Opens the terms dialog on top of this one (both stay open, as production's modal stack). -->
           <button type="button" class="link-button" data-modal-open="terms-modal" data-i18n="terms.title">Zoom Pro Terms of Use</button>
         </p>
       </div>
@@ -270,7 +286,20 @@
     </div>
   </dialog>
 
-  <!-- Demo only: moved next to the Demo view switcher by profile.js to preview both Request Pro states. -->
+  <!-- Demo only: moved next to the Demo view switcher by profile.js to preview every license state. -->
+  <div class="demo-switcher" data-license-demo hidden>
+    <span class="demo-label" data-i18n="demo.userLicense">User license</span>
+    <div class="segmented" role="group" data-i18n-aria-label="demo.userLicense">
+      <button type="button" data-set-license="basic" data-i18n="license.basic">Basic</button>
+      <button type="button" data-set-license="pro" data-i18n="license.pro">Pro</button>
+      <button type="button" data-set-license="tempPro" data-i18n="license.tempPro">Temporary Pro</button>
+      <button type="button" data-set-license="emergencyPro" data-i18n="license.emergencyPro">Emergency Pro</button>
+    </div>
+    <div class="segmented">
+      <button type="button" data-toggle-large-meeting aria-pressed="false" data-i18n="license.largeMeeting">Large Meeting</button>
+    </div>
+  </div>
+
   <div class="demo-switcher" data-quota-demo hidden>
     <span class="demo-label" data-i18n="demo.orgQuota">Org Pro quota</span>
     <div class="segmented" role="group" data-i18n-aria-label="demo.orgQuota">
