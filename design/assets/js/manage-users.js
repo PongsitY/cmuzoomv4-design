@@ -4,9 +4,10 @@
  * 2. Manage Users — mirrors production app/pages/manage-users.vue with LicenseModal.vue,
  * QuotaBar.vue, SortIndicator.vue and TablePagination (App.renderPagination).
  *
- * - Org Admin: their organization's Pro quota; manages Pro only (shared-pool rows are locked).
+ * - Org Admin: their organization's Pro quota and Pro expiration interval editor; manages Pro only
+ *   (shared-pool rows are locked).
  * - Global Admin: any organization (select), plus the Shared Pool quota bars (each opens
- *   PoolHolders), the Pro expiration interval editor, and every license.
+ *   PoolHolders), and every license.
  * - User: the no-permission card.
  *
  * Search, sort and paging run here on the in-memory mock data (production delegates them to the
@@ -206,7 +207,8 @@
     const days = expiryDaysByOrg.get(currentOrg().id);
     els.expiryValue.textContent = intervalLabel(days);
     els.expiryDesc.textContent = days === EXPIRY_NEVER ? t('expiry.descNever') : t('expiry.desc', { count: days });
-    els.expiryEdit.hidden = !isGlobal();
+    // Org Admins edit their own organization's interval; Global Admins edit the selected one.
+    els.expiryEdit.hidden = !hasAccess();
   }
 
   function renderExpiryOptions(selectedDays) {

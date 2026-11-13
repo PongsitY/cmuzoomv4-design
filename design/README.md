@@ -118,9 +118,9 @@ assigns the license for those slots right away (no admin approval).
 
 ### Manage Users (`manage-users.html`)
 
-- **Roles:** Admin sees their own organization, the organization's Pro quota bar and the Pro expiration
-  interval read-only; Global Admin picks any organization, also sees the Shared Pool bars (Temporary Pro,
-  Large Meeting, Reserved Pro, Emergency Pro — each opens **Pool Holders**) and can **Edit** the interval
+- **Roles:** Admin sees their own organization, the organization's Pro quota bar and can **Edit** its Pro
+  expiration interval; Global Admin picks any organization, also sees the Shared Pool bars (Temporary Pro,
+  Large Meeting, Reserved Pro, Emergency Pro — each opens **Pool Holders**) and edits the selected org's interval
   (presets 30 / 60 / 90 / 180 days or Never; mock 60, Medicine 90, Humanities 30). User gets the
   no-permission card.
 - **Table:** Name, **Account Type** (Teacher / Employee / Student / Org), Last Hosted, License. Search
